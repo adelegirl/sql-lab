@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL 练习场 · v0.6 preview</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f6f8fa;
+    color: #24292f;
+    font-size: 14px;
+  }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ============ Header ============ */
+  header {
+    background: linear-gradient(90deg, #0969da 0%, #218bff 100%);
+    color: white;
+    padding: 10px 24px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: 48px;
+  }
+  header h1 { margin: 0; font-size: 17px; font-weight: 600; }
+  header .status { font-size: 13px; opacity: 0.95; }
+  #status-badge.loading { color: #fff9c4; }
+  #status-badge.ready { color: #b8f5c8; }
+  #status-badge.error { color: #ffcdd2; }
+
+  /* ============ Top Nav ============ */
+  nav.topnav {
+    background: #ffffff;
+    border-bottom: 1px solid #d0d7de;
+    padding: 0 24px;
+    display: flex;
+    gap: 0;
+    position: sticky;
+    top: 48px;
+    z-index: 99;
+    height: 44px;
+    align-items: stretch;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  nav.topnav a {
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    font-size: 14px;
+    color: #57606a;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    font-weight: 500;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  nav.topnav a:hover:not(.disabled):not(.active) { color: #0969da; text-decoration: none; }
+  nav.topnav a.active {
+    color: #0969da;
+    border-bottom-color: #0969da;
+    font-weight: 600;
+  }
+  nav.topnav a.disabled {
+    color: #b1bac4;
+    cursor: not-allowed;
+  }
+  nav.topnav a.disabled:hover { text-decoration: none; }
+
+  /* ============ Layout ============ */
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: calc(100vh - 92px);
+  }
+
+  /* ============ Sidebar ============ */
+  aside {
+    background: #ffffff;
+    border-right: 1px solid #d0d7de;
+    padding: 12px 0;
+    position: sticky;
+    top: 92px;
+    height: calc(100vh - 92px);
+    overflow-y: auto;
+  }
+  .progress-bar {
+    padding: 8px 16px 12px;
+    font-size: 11px;
+    color: #57606a;
+    border-bottom: 1px solid #eaecef;
+    margin-bottom: 8px;
+  }
+  .progress-fill {
+    height: 4px;
+    background: #eaecef;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .progress-fill > div {
+    height: 100%;
+    background: linear-gradient(90deg, #2da44e, #4ac26b);
+    transition: width 0.3s;
+  }
+  .lesson-group {
+    padding: 8px 16px 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #57606a;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  .lesson-group:hover { color: #0969da; }
+  .lesson-group.active { color: #0969da; }
+  .lesson-item {
+    padding: 5px 20px 5px 32px;
+    font-size: 13px;
+    color: #24292f;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.4;
+  }
+  .lesson-item:hover { background: #f6f8fa; }
+  .lesson-item .lesson-num { color: #8b949e; font-size: 11px; font-family: monospace; min-width: 26px; }
+  .lesson-item .title-text { flex: 1; }
+  .lesson-item .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #d0d7de; flex-shrink: 0;
+  }
+  .lesson-item.passed .status-dot { background: #2da44e; }
+  .lesson-item.attempted .status-dot { background: #fb8500; }
+  .tool-item {
+    padding: 8px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #57606a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tool-item:hover { background: #f6f8fa; color: #24292f; }
+
+  /* ============ Main content ============ */
+  main {
+    padding: 24px 40px 80px;
+    max-width: 920px;
+    width: 100%;
+  }
+  .group-header {
+    margin-bottom: 24px;
+  }
+  .group-header h1 {
+    font-size: 26px;
+    margin: 0 0 8px;
+    font-weight: 700;
+    color: #24292f;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #0969da;
+    display: inline-block;
+  }
+  .group-header .subtitle {
+    color: #57606a;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ============ Top data preview ============ */
+  .db-preview {
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .db-preview-header {
+    background: #EEF3E2;
+    padding: 8px 14px;
+    font-size: 13px;
+    color: #24292f;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #d0d7de;
+  }
+  .db-preview-header .tabs { display: flex; gap: 4px; }
+  .db-preview-header .tab {
+    padding: 3px 10px;
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #24292f;
+    font-family: monospace;
+  }
+  .db-preview-header .tab.active { background: #0969da; color: white; border-color: #0860c8; }
+  .db-preview-body { padding: 0; overflow-x: auto; max-height: 240px; overflow-y: auto; }
+  .db-preview-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+  }
+  .db-preview-body th, .db-preview-body td {
+    padding: 5px 10px;
+    border-bottom: 1px solid #eaecef;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .db-preview-body th {
+    background: #f6f8fa;
+    font-weight: 600;
+    color: #24292f;
+    position: sticky;
+    top: 0;
+  }
+  .db-preview-body td.r { text-align: right; }
+
+  /* ============ Problem card ============ */
+  .qu {
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    scroll-margin-top: 60px;
+  }
+  .qu h2 {
+    margin: 0 0 14px;
+    font-size: 19px;
+    font-weight: 600;
+    color: #24292f;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eaecef;
+  }
+  .qu h2 .qid {
+    font-family: monospace;
+    color: #0969da;
+    font-size: 15px;
+    background: #ddf4ff;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+  }
+  .badge.easy { background: #2da44e; }
+  .badge.medium { background: #fb8500; }
+  .badge.hard { background: #cf222e; }
+
+  .qu .intro {
+    color: #24292f;
+    line-height: 1.7;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+  .qu .intro b { color: #0550ae; font-weight: 700; }
+  .qu .imper {
+    background: #ddf4ff;
+    padding: 10px 14px;
+    border-left: 3px solid #0969da;
+    border-radius: 4px;
+    margin-bottom: 14px;
+    color: #0550ae;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+  .qu .imper b { color: #082567; }
+  .qu .note {
+    background: #fff8c5;
+    padding: 6px 10px;
+    border-left: 3px solid #d4a72c;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #7d4e00;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .qu code {
+    background: #eff1f3;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 12px;
+    color: #cf222e;
+  }
+
+  .editor-wrap {
+    position: relative;
+    margin-bottom: 10px;
+  }
+  .editor-wrap textarea {
+    width: 100%;
+    min-height: 100px;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+    font-size: 13px;
+    padding: 10px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    resize: vertical;
+    background: #ffffff;
+    line-height: 1.5;
+    color: #24292f;
+  }
+  .editor-wrap textarea:focus { outline: none; border-color: #0969da; box-shadow: 0 0 0 3px rgba(9,105,218,0.15); }
+  .editor-wrap .reset-starter {
+    position: absolute;
+    right: 8px;
+    top: 6px;
+    background: rgba(246,248,250,0.9);
+    border: 1px solid #d0d7de;
+    padding: 2px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #57606a;
+  }
+  .editor-wrap .reset-starter:hover { color: #24292f; background: white; }
+
+  .qu-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  button {
+    padding: 5px 12px;
+    border: 1px solid #d0d7de;
+    background: #f6f8fa;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #24292f;
+    transition: all 0.15s;
+  }
+  button:hover:not(:disabled) { background: #eaecef; border-color: #afb8c1; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.primary { background: #2da44e; color: white; border-color: #2c974b; }
+  button.primary:hover:not(:disabled) { background: #2c974b; }
+  button.blue { background: #0969da; color: white; border-color: #0860c8; }
+  button.blue:hover:not(:disabled) { background: #0860c8; }
+  button.ghost { background: transparent; font-size: 12px; padding: 4px 10px; color: #57606a; }
+
+  .result-box {
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    overflow: hidden;
+    display: none;
+    margin-bottom: 8px;
+  }
+  .result-box.show { display: block; }
+  .result-box .result-header {
+    padding: 6px 12px;
+    background: #f6f8fa;
+    font-size: 12px;
+    color: #57606a;
+    border-bottom: 1px solid #d0d7de;
+    display: flex;
+    justify-content: space-between;
+  }
+  .result-box .result-body {
+    max-height: 300px;
+    overflow: auto;
+  }
+  table.result {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+  }
+  table.result th, table.result td {
+    padding: 4px 10px;
+    border-bottom: 1px solid #eaecef;
+    text-align: left;
+    white-space: nowrap;
+  }
+  table.result th { background: #f6f8fa; font-weight: 600; position: sticky; top: 0; }
+  table.result td.null { color: #8b949e; font-style: italic; }
+  .err-msg {
+    padding: 10px 14px;
+    color: #cf222e;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    background: #ffebe9;
+  }
+
+  .feedback {
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    display: none;
+    margin-bottom: 8px;
+  }
+  .feedback.show { display: block; }
+  .feedback.pass { background: #dafbe1; color: #116329; border: 1px solid #4ac26b; }
+  .feedback.fail { background: #ffebe9; color: #82071e; border: 1px solid #ffa198; }
+  .feedback.info { background: #ddf4ff; color: #0550ae; border: 1px solid #54aeff; }
+
+  details.ans-block {
+    margin-top: 8px;
+    background: #f6f8fa;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  details.ans-block summary { cursor: pointer; color: #0969da; font-weight: 600; }
+  details.ans-block pre {
+    background: white;
+    padding: 10px 12px;
+    border-radius: 4px;
+    border: 1px solid #eaecef;
+    margin: 8px 0 0;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: #24292f;
+  }
+  details.hint-block {
+    margin-top: 8px;
+    background: #fff8f0;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    border: 1px solid #ffdfb5;
+  }
+  details.hint-block summary { cursor: pointer; color: #953800; font-weight: 600; }
+  details.hint-block > div { padding-top: 8px; line-height: 1.7; }
+
+  kbd {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: monospace;
+    font-size: 11px;
+    box-shadow: inset 0 -1px 0 #d0d7de;
+    color: #24292f;
+  }
+
+  /* SQL syntax highlight-ish */
+  .sql-keyword { color: #cf222e; font-weight: bold; }
+  .sql-string { color: #0a3069; }
+  .sql-number { color: #953800; }
+</style>
+</head>
+<body>
+<header>
+  <h1>❄️ SQL 练习场 <span style="opacity:0.7;font-size:12px;font-weight:400;">v0.6 preview · 上海电力大学·数据库原理及应用</span></h1>
+  <div class="status">状态：<span id="status-badge" class="loading">正在加载 SQLite 引擎…</span></div>
+</header>
+
+<nav class="topnav">
+  <a href="index.html" class="active">📖 查询练习 <span style="opacity:0.7;font-size:12px;margin-left:2px">50题</span></a>
+  <a href="ddl.html">🏗️ DDL 建表 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+  <a class="disabled" title="v0.7 敬请期待">📝 DML 数据操作 <span style="opacity:0.6;font-size:12px;margin-left:2px">敬请期待</span></a>
+  <a class="disabled" title="v0.8 敬请期待">🔐 DCL 权限控制 <span style="opacity:0.6;font-size:12px;margin-left:2px">敬请期待</span></a>
+</nav>
+
+<div class="layout">
+  <aside>
+    <div class="progress-bar">
+      <span id="progress-text">进度 0 / 25</span>
+      <div class="progress-fill"><div id="progress-bar-inner" style="width:0%"></div></div>
+    </div>
+    <div id="nav-list"></div>
+    <div class="lesson-group" style="margin-top:12px; cursor:default">🛠️ 工具</div>
+    <div class="tool-item" onclick="resetDB()" title="把数据库还原为初始的 20 学生 / 8 课程 / 35 选课（当误改数据时用）">↺ 重置数据库</div>
+    <div class="tool-item" onclick="resetProgress()" title="清除已通过/尝试过的题目记录（数据库不受影响）">🧹 清除进度</div>
+  </aside>
+
+  <main id="main-content">
+    <!-- 内容动态渲染 -->
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.js"></script>
+<script>
+// ============ 数据库初始化 SQL ============
+const INIT_SQL = `
+DROP TABLE IF EXISTS sc;
+DROP TABLE IF EXISTS student;
+DROP TABLE IF EXISTS course;
+
+CREATE TABLE student (
+  student_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  gender TEXT CHECK(gender IN ('男','女')),
+  department TEXT,
+  birth_year INTEGER
+);
+
+CREATE TABLE course (
+  course_id TEXT PRIMARY KEY,
+  course_name TEXT NOT NULL,
+  credit INTEGER,
+  teacher TEXT
+);
+
+CREATE TABLE sc (
+  student_id TEXT,
+  course_id TEXT,
+  score INTEGER,
+  PRIMARY KEY(student_id, course_id),
+  FOREIGN KEY(student_id) REFERENCES student(student_id),
+  FOREIGN KEY(course_id) REFERENCES course(course_id)
+);
+
+INSERT INTO student VALUES
+('20240101','张伟','男','计算机科学',2006),
+('20240102','李娜','女','计算机科学',2006),
+('20240103','王强','男','计算机科学',2005),
+('20240104','张敏','女','计算机科学',2006),
+('20240105','刘洋','男','计算机科学',2007),
+('20240201','赵磊','男','软件工程',2006),
+('20240202','陈静','女','软件工程',2006),
+('20240203','孙涛','男','软件工程',2006),
+('20240204','周芳','女','软件工程',2007),
+('20240205','王浩','男','软件工程',2005),
+('20240301','吴斌','男','电气工程',2005),
+('20240302','郑丽','女','电气工程',2006),
+('20240303','马超','男','电气工程',2006),
+('20240304','张丹','女','电气工程',2006),
+('20240305','李凡','男','电气工程',2007),
+('20240401','冯梅','女','数学',2006),
+('20240402','蒋华','男','数学',2007),
+('20240403','沈玲','女','数学',2006),
+('20240404','张涛','男','数学',2006),
+('20240405','杨柳','女','数学',2005),
+('20240501','刘晨','男','电子工程',2005),
+('20240502','陈欣','女','电子工程',2006),
+('20240503','杨帆','男','电子工程',2006),
+('20240504','林薇','女','电子工程',2007),
+('20240505','许亮','男','电子工程',2005),
+('20240506','高源','男','电子工程',2006),
+('20240507','董梦','女','电子工程',2006),
+('20240508','谢阳','男','电子工程',2007),
+('20240509','钟航','男','电子工程',2005),
+('20240510','夏冉','女','电子工程',2006),
+('20240601','唐雪','女','经济管理',2006),
+('20240602','曹健','男','经济管理',2007),
+('20240603','徐颖','女','经济管理',2005),
+('20240604','范强','男','经济管理',2006),
+('20240605','吕娟','女','经济管理',2006),
+('20240606','袁涛','男','经济管理',2005),
+('20240607','邓雅','女','经济管理',2006),
+('20240608','傅军','男','经济管理',2007),
+('20240609','蔡菲','女','经济管理',2006),
+('20240610','程晓','女','经济管理',2005);
+
+INSERT INTO course VALUES
+('C001','数据库原理及应用',4,'李教授'),
+('C002','数据结构',4,'王教授'),
+('C003','高等数学',5,'张教授'),
+('C004','操作系统',3,'刘教授'),
+('C005','计算机网络',3,'陈教授'),
+('C006','软件工程',3,'赵教授'),
+('C007','编译原理',3,'钱教授'),
+('C008','人工智能导论',2,'孙教授'),
+('C009','电路分析',3,'孙教授'),
+('C010','信号与系统',4,'钱教授'),
+('C011','微机原理',3,'李教授'),
+('C012','微观经济学',3,'赵教授'),
+('C013','会计学原理',3,'周教授'),
+('C014','管理学',2,'吴教授'),
+('C015','大数据分析',3,'郑教授');
+
+INSERT INTO sc VALUES
+('20240101','C001',85),('20240101','C002',78),('20240101','C003',92),
+('20240102','C001',91),('20240102','C002',88),('20240102','C003',85),('20240102','C008',90),
+('20240103','C001',72),('20240103','C002',65),('20240103','C004',80),
+('20240104','C001',95),('20240104','C002',90),('20240104','C003',88),
+('20240105','C001',60),('20240105','C002',55),
+('20240201','C001',82),('20240201','C006',88),('20240201','C008',75),
+('20240202','C001',77),('20240202','C006',92),
+('20240203','C001',68),('20240203','C006',70),
+('20240204','C006',85),('20240204','C008',82),
+('20240301','C001',75),('20240301','C005',82),
+('20240302','C005',90),('20240302','C008',88),
+('20240303','C001',88),('20240303','C005',NULL),
+('20240304','C005',72),
+('20240401','C003',98),('20240402','C003',94),('20240403','C003',89),
+('20240404','C003',76),
+('20240501','C001',80),('20240501','C009',88),('20240501','C010',76),
+('20240502','C001',95),('20240502','C009',92),
+('20240503','C009',70),('20240503','C010',NULL),
+('20240504','C009',85),('20240504','C011',78),
+('20240505','C010',52),('20240505','C011',65),
+('20240506','C001',72),('20240506','C009',68),
+('20240507','C009',90),('20240507','C011',82),
+('20240508','C010',58),('20240508','C011',NULL),
+('20240509','C009',75),
+('20240601','C012',88),('20240601','C013',82),('20240601','C014',76),
+('20240602','C001',68),('20240602','C012',75),('20240602','C013',80),
+('20240603','C012',100),('20240603','C014',95),
+('20240604','C012',48),('20240604','C013',62),
+('20240605','C012',85),('20240605','C013',88),
+('20240606','C013',72),('20240606','C014',NULL),
+('20240607','C012',70),
+('20240608','C012',82),
+('20240609','C013',90);
+`;
+
+// ============ 分组配置 ============
+const GROUPS = [
+  {
+    key: 'select', icon: '📖', title: 'SELECT 基础',
+    subtitle: '从最简单的查询开始：SELECT * / 指定列 / DISTINCT 去重 / AS 别名 / LIMIT 限行。掌握"从一张表里取数据"的所有基本姿势。',
+    tables: ['student'],
+  },
+  {
+    key: 'where', icon: '🔍', title: 'WHERE 条件过滤',
+    subtitle: '给查询加过滤条件：等值、AND/OR、BETWEEN 范围、IN 集合、LIKE 模糊、IS NULL 空值判断。',
+    tables: ['student', 'sc'],
+  },
+  {
+    key: 'order', icon: '📊', title: 'ORDER BY 排序',
+    subtitle: '按一列或多列排序，升降序组合。',
+    tables: ['student'],
+  },
+  {
+    key: 'agg', icon: '📈', title: '聚合与分组',
+    subtitle: 'COUNT / SUM / AVG / MAX / MIN 聚合函数；GROUP BY 分组；HAVING 分组后过滤。教材 ch08 核心。',
+    tables: ['student', 'sc'],
+  },
+  {
+    key: 'join', icon: '🔗', title: 'JOIN 多表连接',
+    subtitle: '内连接 JOIN、外连接 LEFT/RIGHT JOIN。用于跨表查询关联信息。',
+    tables: ['student', 'course', 'sc'],
+  },
+  {
+    key: 'sub', icon: '🎯', title: '子查询',
+    subtitle: 'IN 子查询、NOT IN、相关子查询——嵌套 SELECT 的进阶用法。',
+    tables: ['student', 'course', 'sc'],
+  },
+];
+
+// ============ 题库 25 道 ============
+// 字段说明：
+//   id: 题号
+//   group: 所属分组 key
+//   title: 题目标题
+//   difficulty: easy/medium/hard
+//   intro: 讲解段落（介绍关键字 + 用法，用 <b> 加粗关键字）
+//   imper: 祈使任务（明确要学生做什么，用 <b> 加粗关键字）
+//   starter: 起手 SQL（编辑器初始内容，学生修改后运行）
+//   answer: 参考答案
+//   hint: 提示（默认折叠）
+//   strictOrder: 是否严格按序对比
+//   note: 备注（可选）
+
+const LESSONS = [
+  // ===== SELECT 基础 =====
+  {
+    id: 'P01', group: 'select', title: 'SELECT 全表查询', difficulty: 'easy',
+    intro: '最基础的查询语句：<code>SELECT 列名 FROM 表名</code>。星号 <b>*</b> 表示"所有列"。<br>下面的示例查询 course 表的所有信息。',
+    imper: '请修改示例，查出 <b>student</b> 表里所有学生的完整信息（全部列）。',
+    starter: 'SELECT * FROM course;',
+    answer: 'SELECT * FROM student;',
+    strictOrder: false,
+    hint: '把 <code>course</code> 改成 <code>student</code> 即可。',
+  },
+  {
+    id: 'P02', group: 'select', title: '只查指定列', difficulty: 'easy',
+    intro: 'SELECT 后面除了 <code>*</code>，还可以写<b>具体列名</b>，多个列名用逗号分隔。这样只返回需要的列，其它列不显示。',
+    imper: '请查询学生的 <b>学号</b>（student_id）、<b>姓名</b>（name）、<b>系名</b>（department）三列。',
+    starter: 'SELECT student_id, name FROM student;',
+    answer: 'SELECT student_id, name, department FROM student;',
+    strictOrder: false,
+    hint: '在 name 后加一个逗号，再加 department。',
+  },
+  {
+    id: 'P03', group: 'select', title: 'DISTINCT 去重', difficulty: 'easy',
+    intro: '<b>DISTINCT</b> 用于去掉查询结果中的重复行。<br>示例：直接查系名会有 20 行（每个学生一行），加上 DISTINCT 只保留不同的系名。',
+    imper: '请查询学校目前有<b>哪些系</b>（不重复列出所有系名）。',
+    starter: 'SELECT department FROM student;',
+    answer: 'SELECT DISTINCT department FROM student;',
+    strictOrder: false,
+    hint: '在 <code>SELECT</code> 后面加上 <code>DISTINCT</code>。',
+  },
+  {
+    id: 'P04', group: 'select', title: 'AS 列别名', difficulty: 'easy',
+    intro: '<b>AS</b> 关键字用于给列（或表）起别名。别名可以是中文，让结果表头更易读。AS 可以省略。<br>写法：<code>SELECT 原名 AS 别名 FROM ...</code>',
+    imper: '请查所有学生的学号和姓名，把列名分别改成中文 <b>学号</b> 和 <b>姓名</b>。',
+    starter: 'SELECT student_id AS id, name FROM student;',
+    answer: 'SELECT student_id AS 学号, name AS 姓名 FROM student;',
+    strictOrder: false,
+    hint: 'name 后加 <code>AS 姓名</code>，把 id 改成 学号。',
+  },
+  {
+    id: 'P05', group: 'select', title: 'LIMIT 限制行数', difficulty: 'easy',
+    intro: '<b>LIMIT N</b> 只返回前 N 行结果，常用于查看数据样本或分页。<br><b>方言对照：</b>SQLite/MySQL/PostgreSQL 用 <code>LIMIT</code>；<b>SQL Server</b> 用 <code>SELECT TOP N *</code>；Oracle 用 <code>ROWNUM</code>。',
+    imper: '请查询 student 表的<b>前 5 行</b>（所有列）。',
+    starter: 'SELECT * FROM student LIMIT 10;',
+    answer: 'SELECT * FROM student LIMIT 5;',
+    strictOrder: true,
+    hint: '把 10 改成 5。',
+    note: '本题按主键顺序返回前 5 行，需严格按序对比。',
+  },
+
+  // ===== WHERE 条件过滤 =====
+  {
+    id: 'P06', group: 'where', title: 'WHERE 等值 + AND', difficulty: 'easy',
+    intro: '<b>WHERE</b> 子句用于过滤行。多个条件用 <b>AND</b>（且）或 <b>OR</b>（或）连接。<br>字符串必须用<b>单引号</b> <code>\'</code> 括起来（双引号在标准 SQL 里表示列名）。',
+    imper: '请查询<b>计算机科学</b>系的<b>男</b>生（返回学号、姓名两列）。',
+    starter: "SELECT student_id, name FROM student\n  WHERE department = '软件工程';",
+    answer: "SELECT student_id, name FROM student WHERE department = '计算机科学' AND gender = '男';",
+    strictOrder: false,
+    hint: '在 WHERE 后加两个条件，用 AND 连接。',
+  },
+  {
+    id: 'P07', group: 'where', title: 'BETWEEN 范围', difficulty: 'easy',
+    intro: '<b>BETWEEN a AND b</b> 用于范围过滤（<b>闭区间</b>，包含 a 和 b 两端）。<br>等价写法：<code>col &gt;= a AND col &lt;= b</code>。',
+    imper: '请查询<b>出生年在 2005 到 2006 之间</b>的学生（返回学号、姓名、出生年）。',
+    starter: 'SELECT student_id, name, birth_year FROM student\n  WHERE birth_year BETWEEN 2007 AND 2008;',
+    answer: 'SELECT student_id, name, birth_year FROM student WHERE birth_year BETWEEN 2005 AND 2006;',
+    strictOrder: false,
+    hint: '把 2007 改成 2005，把 2008 改成 2006。',
+  },
+  {
+    id: 'P08', group: 'where', title: 'IN 集合匹配', difficulty: 'easy',
+    intro: '<b>IN (v1, v2, ...)</b> 判断列值是否在一个集合中。等价于 <code>col = v1 OR col = v2 OR ...</code>，但更简洁。',
+    imper: '请查询<b>计算机科学</b>系或<b>数学</b>系的学生（返回学号、姓名、系名）。',
+    starter: "SELECT student_id, name, department FROM student\n  WHERE department IN ('软件工程');",
+    answer: "SELECT student_id, name, department FROM student WHERE department IN ('计算机科学','数学');",
+    strictOrder: false,
+    hint: '把括号里的一个系名换成两个（用逗号分隔）。',
+  },
+  {
+    id: 'P09', group: 'where', title: 'LIKE 模糊匹配', difficulty: 'easy',
+    intro: '<b>LIKE</b> 用于字符串模糊匹配，配合<b>通配符</b>使用：<br>• <b>%</b> 匹配任意长度的任意字符（含空）<br>• <b>_</b> 匹配一个任意字符<br>示例：<code>\'张%\'</code> 匹配"张"开头的字符串，<code>\'%张%\'</code> 匹配包含"张"的字符串。',
+    imper: '请查询所有<b>姓"张"</b>的学生（返回姓名和系名），按<b>学号排序</b>。',
+    starter: "SELECT name, department FROM student\n  WHERE name LIKE '%X%'\n  ORDER BY student_id;",
+    answer: "SELECT name, department FROM student WHERE name LIKE '张%' ORDER BY student_id;",
+    strictOrder: true,
+    hint: '把 <code>\'%X%\'</code> 改成 <code>\'张%\'</code>。',
+  },
+  {
+    id: 'P10', group: 'where', title: 'IS NULL 空值判断', difficulty: 'medium',
+    intro: '<b>NULL</b> 表示"未知"或"缺失"。判断 NULL <b>必须用</b> <code>IS NULL</code> 或 <code>IS NOT NULL</code>——不能用 <code>= NULL</code>（结果永远是 NULL，不是 true 也不是 false）。<br>本题涉及 <code>sc</code> 表（选课成绩表）。',
+    imper: '请找出 sc 表中<b>成绩为空</b>（缺考或未录入）的记录（返回学号和课程号）。',
+    starter: 'SELECT student_id, course_id FROM sc\n  WHERE score = NULL;',
+    answer: 'SELECT student_id, course_id FROM sc WHERE score IS NULL;',
+    strictOrder: false,
+    hint: '把 <code>= NULL</code> 改成 <code>IS NULL</code>。运行原示例看看会发生什么，就明白为什么必须改。',
+    hints: [
+      '想一想：SQL 里判断"空"能不能用 <code>=</code>？先运行下示例——大概率一条都查不到，为什么会这样？',
+      '把 <code>WHERE score = NULL</code> 改成 <code>WHERE score IS NULL</code>。原因：NULL 参与 <code>=</code> 比较，结果永远是 NULL（三值逻辑，既不是 true 也不是 false），所以必须用专用的 <code>IS NULL</code> / <code>IS NOT NULL</code>。',
+    ],
+    note: '教材重点：三值逻辑（true/false/NULL），NULL 参与任何比较运算都得 NULL',
+  },
+
+  // ===== ORDER BY 排序 =====
+  {
+    id: 'P11', group: 'order', title: 'ORDER BY 单字段降序', difficulty: 'easy',
+    intro: '<b>ORDER BY 列名 [ASC|DESC]</b> 按指定列排序。ASC 升序（默认可省），<b>DESC</b> 降序。<br>常与 LIMIT 组合：查"前 5 名"、"最新 10 条"等。',
+    imper: '请查所有学生的<b>学号</b>和<b>姓名</b>，按学号<b>从大到小</b>排序，只显示<b>前 5 条</b>。',
+    starter: 'SELECT student_id, name FROM student\n  ORDER BY student_id ASC\n  LIMIT 5;',
+    answer: 'SELECT student_id, name FROM student ORDER BY student_id DESC LIMIT 5;',
+    strictOrder: true,
+    hint: '把 ASC 改成 DESC。',
+  },
+  {
+    id: 'P12', group: 'order', title: '多字段排序', difficulty: 'medium',
+    intro: '<b>ORDER BY</b> 后可以跟<b>多个字段</b>，用逗号分隔，每个字段单独指定升降序。<br>排序规则：先按第一个字段排；第一字段相等时，再按第二个字段排。',
+    imper: '请查所有学生的姓名、系名、出生年，按<b>系名升序</b>，同系内按<b>出生年降序</b>排列。',
+    starter: 'SELECT name, department, birth_year FROM student\n  ORDER BY department;',
+    answer: 'SELECT name, department, birth_year FROM student ORDER BY department ASC, birth_year DESC;',
+    strictOrder: true,
+    hint: '在 <code>ORDER BY department</code> 后加逗号，再加 <code>birth_year DESC</code>。',
+    hints: [
+      '<code>ORDER BY</code> 后面可以跟多个字段，用逗号分隔。当前示例只按 department 排——想想同系内学生的顺序现在是不是随机的？',
+      '在 <code>ORDER BY department</code> 后加 <code>, birth_year DESC</code>——先按系名升序，同系内再按出生年降序。',
+    ],
+  },
+
+  // ===== 聚合与分组 =====
+  {
+    id: 'P13', group: 'agg', title: 'COUNT 计数', difficulty: 'easy',
+    intro: '<b>聚合函数</b>把多行汇总成一行/一个值。最常用的是 <b>COUNT</b>：<br>• <code>COUNT(*)</code> 数所有行（含 NULL）<br>• <code>COUNT(列名)</code> 数该列非 NULL 的行数<br>• <code>COUNT(DISTINCT 列名)</code> 数去重后的非 NULL 数量',
+    imper: '请统计全校<b>总学生数</b>，列名叫 <b>total</b>。',
+    starter: 'SELECT COUNT(*) FROM student;',
+    answer: 'SELECT COUNT(*) AS total FROM student;',
+    strictOrder: false,
+    hint: '在 <code>COUNT(*)</code> 后加 <code>AS total</code>。',
+  },
+  {
+    id: 'P14', group: 'agg', title: 'MAX / MIN / AVG', difficulty: 'easy',
+    intro: '常用聚合函数：<b>MAX / MIN / AVG / SUM</b>。<br>结果小数保留几位用 <b>ROUND(值, N)</b>。<br>示例：算"数据库原理及应用"（课程号 C001）的最高分。',
+    imper: '请一次算出 C001 的<b>最高分</b>、<b>最低分</b>、<b>平均分</b>（平均分保留 <b>2 位小数</b>），列名分别为 <b>最高</b>、<b>最低</b>、<b>平均</b>。',
+    starter: "SELECT MAX(score) AS 最高 FROM sc\n  WHERE course_id = 'C001';",
+    answer: "SELECT MAX(score) AS 最高, MIN(score) AS 最低, ROUND(AVG(score),2) AS 平均 FROM sc WHERE course_id='C001';",
+    strictOrder: false,
+    hint: '在 MAX 后加 MIN、再加 <code>ROUND(AVG(score), 2)</code>。三个都要写 AS 别名。',
+  },
+  {
+    id: 'P15', group: 'agg', title: 'GROUP BY 分组统计', difficulty: 'medium',
+    intro: '<b>GROUP BY 列名</b> 按该列分组，配合聚合函数得到"每组一个统计值"。<br><b>关键规则</b>：分组后 SELECT 里只能出现分组列或聚合函数，不能是其它原始列（否则语义不明）。',
+    imper: '请统计<b>每个系</b>的学生人数（列名 <b>department</b> 和 <b>cnt</b>），按人数<b>从多到少</b>排序。',
+    starter: 'SELECT department, COUNT(*) AS cnt FROM student\n  GROUP BY department;',
+    answer: 'SELECT department, COUNT(*) AS cnt FROM student GROUP BY department ORDER BY cnt DESC;',
+    strictOrder: true,
+    hint: '在结尾加 <code>ORDER BY cnt DESC</code>。',
+    hints: [
+      '分组结果已经出来了，只是<b>顺序</b>不对。想想 ORDER BY 应该按哪个字段？升序还是降序？',
+      '末尾追加 <code>ORDER BY cnt DESC</code>——注意 ORDER BY 可以直接引用 SELECT 里定义的别名 <code>cnt</code>。',
+    ],
+  },
+  {
+    id: 'P16', group: 'agg', title: '各课程平均分', difficulty: 'medium',
+    intro: '同样的分组模式，换成按 course_id 分组，聚合函数换成 AVG。<br>注意：没有任何选课记录的课程（如 C007）不会出现在结果中——这就是内连接式过滤。',
+    imper: '请统计每门课的<b>平均分</b>（列名 <b>course_id</b> 和 <b>平均分</b>，保留 <b>2 位小数</b>）。',
+    starter: 'SELECT course_id, AVG(score) FROM sc\n  GROUP BY course_id;',
+    answer: 'SELECT course_id, ROUND(AVG(score),2) AS 平均分 FROM sc GROUP BY course_id;',
+    strictOrder: false,
+    hint: '给 AVG(score) 套一层 <code>ROUND(..., 2)</code>，再加 <code>AS 平均分</code>。',
+    hints: [
+      '题目有两个要求：(1) 平均分保留 2 位小数；(2) 列名改成中文"平均分"。想想 SQL 里"保留 N 位小数"用哪个函数？',
+      '把 <code>AVG(score)</code> 换成 <code>ROUND(AVG(score), 2) AS 平均分</code>——<code>ROUND(值, 位数)</code> 是标准写法。',
+    ],
+    note: 'C007 编译原理无人选，本题不会返回它。要让它出现，见 P22 LEFT JOIN。',
+  },
+  {
+    id: 'P17', group: 'agg', title: 'HAVING 分组后过滤', difficulty: 'medium',
+    intro: '<b>WHERE 在分组之前过滤原始行</b>；<b>HAVING 在分组之后过滤分组结果</b>。<br>聚合函数（COUNT、AVG 等）只能出现在 HAVING 里，不能在 WHERE 里——因为分组前聚合还没算出来。',
+    imper: '请找出<b>选课人数 ≥ 5</b> 的课程（列名 <b>course_id</b> 和 <b>cnt</b>）。',
+    starter: 'SELECT course_id, COUNT(*) AS cnt FROM sc\n  GROUP BY course_id;',
+    answer: 'SELECT course_id, COUNT(*) AS cnt FROM sc GROUP BY course_id HAVING COUNT(*) >= 5;',
+    strictOrder: false,
+    hint: '在 <code>GROUP BY course_id</code> 后加 <code>HAVING COUNT(*) &gt;= 5</code>。',
+    hints: [
+      '分组已经做好，现在需要"分组之后"再过滤。聚合函数（如 <code>COUNT</code>）能出现在 <code>WHERE</code> 里吗？如果不能，那应该用哪个关键字？',
+      '在 <code>GROUP BY course_id</code> 后追加 <code>HAVING COUNT(*) &gt;= 5</code>。执行顺序：先 GROUP → 再 HAVING 过滤分组结果。',
+    ],
+    note: '教材重点：WHERE vs HAVING 的执行时机差异',
+  },
+  {
+    id: 'P18', group: 'agg', title: 'HAVING 平均分门槛', difficulty: 'medium',
+    intro: '与 P17 类似，HAVING 后面可以用 AVG、MAX、SUM 等任意聚合函数。',
+    imper: '请找出<b>平均分 ≥ 85</b> 的课程（列名 <b>course_id</b> 和 <b>avg_s</b>，保留 <b>2 位小数</b>）。',
+    starter: 'SELECT course_id, AVG(score) AS avg_s FROM sc\n  GROUP BY course_id;',
+    answer: 'SELECT course_id, ROUND(AVG(score),2) AS avg_s FROM sc GROUP BY course_id HAVING AVG(score) >= 85;',
+    strictOrder: false,
+    hint: '给 AVG(score) 套 ROUND，末尾加 <code>HAVING AVG(score) &gt;= 85</code>。',
+    hints: [
+      '和 P17 是一个套路——先分组算均分，再"分组后"过滤均分 ≥ 85 的组。SELECT 里要保留 2 位小数，过滤条件放哪个关键字后面？',
+      '把 <code>AVG(score)</code> 套一层 <code>ROUND(..., 2)</code>；末尾追加 <code>HAVING AVG(score) &gt;= 85</code>。<b>提醒</b>：HAVING 里既可以用聚合函数原式，也可以用 SELECT 里定义的别名。',
+    ],
+  },
+
+  // ===== JOIN 多表连接 =====
+  {
+    id: 'P19', group: 'join', title: '三表内连接', difficulty: 'medium',
+    intro: '<b>JOIN ... ON ...</b> 把两张表按关联条件拼在一起。多表连接就是多个 JOIN 串联。<br>本题涉及三张表：<b>student</b>（学生）、<b>sc</b>（选课记录）、<b>course</b>（课程）。用<b>表别名</b>（如 s、c）能大幅简化写法。',
+    imper: '请列出<b>所有选课记录</b>：显示学生姓名、课程名、分数（每条选课一行）。',
+    starter: 'SELECT s.name, sc.score FROM student s\n  JOIN sc ON s.student_id = sc.student_id;',
+    answer: 'SELECT s.name, c.course_name, sc.score FROM student s JOIN sc ON s.student_id=sc.student_id JOIN course c ON sc.course_id=c.course_id;',
+    strictOrder: false,
+    hint: '在示例基础上再 JOIN 一次 course 表，用 <code>JOIN course c ON sc.course_id = c.course_id</code>，SELECT 里加上 <code>c.course_name</code>。',
+    hints: [
+      '先想清楚要显示三张表的信息：<b>student</b>（姓名）、<b>sc</b>（分数）、<b>course</b>（课程名）。目前示例只连了两张表，还缺一张。想想应该用什么条件把 <b>course</b> 加进来？',
+      '在原来的 <code>JOIN sc ON ...</code> 后面再追加一次 <code>JOIN course c ON sc.course_id = c.course_id</code>；然后在 <code>SELECT</code> 后面把 <code>c.course_name</code> 也加上（用逗号隔开）。',
+    ],
+  },
+  {
+    id: 'P20', group: 'join', title: '数据库高分学生', difficulty: 'medium',
+    intro: '三表连接 + WHERE 复合条件 + ORDER BY —— 综合运用。用中文课程名过滤比用课程编号更可读。',
+    imper: '请查询<b>"数据库原理及应用"</b>课程<b>成绩 ≥ 85</b> 的学生姓名和分数，按分数<b>从高到低</b>排序。',
+    starter: `SELECT s.name, sc.score FROM student s
+  JOIN sc ON s.student_id = sc.student_id
+  JOIN course c ON sc.course_id = c.course_id
+  WHERE c.course_name = '高等数学';`,
+    answer: "SELECT s.name, sc.score FROM student s JOIN sc ON s.student_id=sc.student_id JOIN course c ON sc.course_id=c.course_id WHERE c.course_name='数据库原理及应用' AND sc.score>=85 ORDER BY sc.score DESC;",
+    strictOrder: true,
+    hint: '改课程名为"数据库原理及应用"，加 <code>AND sc.score &gt;= 85</code>，末尾加 <code>ORDER BY sc.score DESC</code>。',
+    hints: [
+      '要动三处：(1) 换课程名；(2) 加一个分数过滤条件；(3) 结尾加降序排序。想想 WHERE 里加条件用什么关键字连接？',
+      '把 <code>\'高等数学\'</code> 改成 <code>\'数据库原理及应用\'</code>；WHERE 后面用 <code>AND</code> 追加 <code>sc.score &gt;= 85</code>；末尾追加 <code>ORDER BY sc.score DESC</code>。',
+    ],
+  },
+  {
+    id: 'P21', group: 'join', title: 'LEFT JOIN 找没选课的学生', difficulty: 'hard',
+    intro: '<b>LEFT JOIN</b> 保留左表<b>所有行</b>，右表没匹配时右表列为 NULL。<br>经典套路：<b>LEFT JOIN + WHERE 右表键 IS NULL</b> —— 找出"左表有但右表没有"的行。',
+    imper: '请找出<b>一门课都没选</b>的学生（返回学号和姓名，按学号排序）。',
+    starter: `SELECT s.student_id, s.name FROM student s
+  LEFT JOIN sc ON s.student_id = sc.student_id
+  WHERE sc.student_id IS NOT NULL
+  ORDER BY s.student_id;`,
+    answer: 'SELECT s.student_id, s.name FROM student s LEFT JOIN sc ON s.student_id=sc.student_id WHERE sc.student_id IS NULL ORDER BY s.student_id;',
+    strictOrder: true,
+    hint: '把 <code>IS NOT NULL</code> 改成 <code>IS NULL</code>。想想为什么？因为 LEFT JOIN 会给"没匹配上"的学生生成 sc 列全为 NULL 的行——这正是我们要找的。',
+    hints: [
+      'LEFT JOIN 会保留左表 <b>student</b> 的所有行，右表 <b>sc</b> 匹配不上的位置全填 NULL。想想"从没选过任何课"的学生，他在 LEFT JOIN 结果里的 sc 列长什么样？',
+      '那些没选课的学生，其对应的所有 <code>sc.xxx</code> 列都是 NULL。你要<b>筛出</b>他们——现在 WHERE 用的 <code>IS NOT NULL</code> 恰好把他们<b>排除</b>了，方向是不是搞反了？',
+      '把 <code>WHERE sc.student_id IS NOT NULL</code> 改成 <code>IS NULL</code>——这是 <b>LEFT JOIN + IS NULL</b> 的经典套路，专门用来找"左表有但右表没有"的行。',
+    ],
+    note: '经典 LEFT JOIN + IS NULL 模式，教材必考',
+  },
+  {
+    id: 'P22', group: 'join', title: 'LEFT JOIN 找没人选的课', difficulty: 'hard',
+    intro: '和 P21 完全对称：只需要把主表换成 course，就能找出"从未被任何学生选过"的课程。',
+    imper: '请找出<b>没有任何学生选</b>的课程（返回课程号和课程名）。',
+    starter: `SELECT c.course_id, c.course_name FROM course c
+  LEFT JOIN sc ON c.course_id = sc.course_id
+  WHERE sc.course_id IS NOT NULL;`,
+    answer: 'SELECT c.course_id, c.course_name FROM course c LEFT JOIN sc ON c.course_id=sc.course_id WHERE sc.course_id IS NULL;',
+    strictOrder: false,
+    hint: '把 <code>IS NOT NULL</code> 改成 <code>IS NULL</code>。',
+    hints: [
+      '这题跟 P21 是<b>完全对称</b>的：P21 找"没选课的学生"（主表 student，右表 sc），本题要找"没被任何学生选过的课"。主表应该是哪张？',
+      '示例已经把 <b>course</b> 当主表，用 <code>LEFT JOIN sc</code> 拉出所有课程。真正的<b>陷阱在 WHERE</b>——现在 <code>IS NOT NULL</code> 筛出的是"有选课记录的课程"，正好和你要的相反。',
+      '把 <code>WHERE sc.course_id IS NOT NULL</code> 改成 <code>WHERE sc.course_id IS NULL</code>。<b>为什么用 IS NULL</b>？LEFT JOIN 会给"course 里有但 sc 里没有"的行填一整行 NULL——这正是"没被选的课"。',
+    ],
+  },
+
+  // ===== 子查询 =====
+  {
+    id: 'P23', group: 'sub', title: 'IN 子查询', difficulty: 'medium',
+    intro: '<b>子查询</b>：把一条 SELECT 的结果嵌到另一条的 WHERE 里。<br><b>IN 子查询</b>常用套路：先从关联表挑出符合条件的主键集合，再用 IN 过滤主表。',
+    imper: '请查询<b>选过"数据库原理及应用"（C001）</b>的所有学生（返回学号和姓名，按学号排序）。',
+    starter: `SELECT student_id, name FROM student
+  WHERE student_id IN (
+    SELECT student_id FROM sc WHERE course_id = 'C002'
+  )
+  ORDER BY student_id;`,
+    answer: "SELECT student_id, name FROM student WHERE student_id IN (SELECT student_id FROM sc WHERE course_id='C001') ORDER BY student_id;",
+    strictOrder: true,
+    hint: '把子查询里的 <code>\'C002\'</code> 改成 <code>\'C001\'</code>。',
+    hints: [
+      '目前子查询里查的是 C002 的选课学生——但题目要的是哪门课？先看清楚课程编号再动手。',
+      '把子查询里的 <code>course_id = \'C002\'</code> 改成 <code>course_id = \'C001\'</code>。整体思路：先从 sc 表挑出选过 C001 的学号集合，再用 <code>IN</code> 从 student 表过滤。',
+    ],
+  },
+  {
+    id: 'P24', group: 'sub', title: 'NOT IN 反向子查询', difficulty: 'medium',
+    intro: '<b>NOT IN</b> 是 IN 的反义。<br><b>陷阱</b>：如果子查询结果中<b>包含 NULL</b>，NOT IN 会返回<b>空集</b>（三值逻辑陷阱），此时推荐改用 <b>NOT EXISTS</b>。本题子查询不含 NULL，可以放心用 NOT IN。',
+    imper: '请查询<b>没有选过"数据库原理及应用"（C001）</b>的学生（返回学号和姓名，按学号排序）。',
+    starter: `SELECT student_id, name FROM student
+  WHERE student_id IN (
+    SELECT student_id FROM sc WHERE course_id = 'C001'
+  )
+  ORDER BY student_id;`,
+    answer: "SELECT student_id, name FROM student WHERE student_id NOT IN (SELECT student_id FROM sc WHERE course_id='C001') ORDER BY student_id;",
+    strictOrder: true,
+    hint: '把 <code>IN</code> 改成 <code>NOT IN</code>。',
+    hints: [
+      '目前 WHERE 用的是 <code>IN</code>（选过 C001 的学生）。题目要的是"没选过"——想想应该改哪个关键字？',
+      '把 <code>WHERE student_id IN (...)</code> 改成 <code>WHERE student_id NOT IN (...)</code>。<b>教材陷阱</b>：如果子查询结果里可能出现 NULL，NOT IN 会返回空集，此时要改用 <code>NOT EXISTS</code>；本题子查询不含 NULL，放心用。',
+    ],
+    note: '教材重点：NOT IN 遇 NULL 的坑（稳妥写法用 NOT EXISTS）',
+  },
+  {
+    id: 'P25', group: 'sub', title: '相关子查询：高于均分', difficulty: 'hard',
+    intro: '子查询也可以返回<b>单个值</b>放在比较运算符右边。<br>写法：<code>WHERE 列 &gt; (SELECT AVG(...) FROM ...)</code>。<br>本题：先算出 C001 的均分，再筛出高于均分的学生。',
+    imper: '请查询"数据库原理及应用"课程<b>成绩高于该课平均分</b>的学生（返回姓名和分数，按分数从高到低排序）。',
+    starter: `SELECT s.name, sc.score FROM student s
+  JOIN sc ON s.student_id = sc.student_id
+  WHERE sc.course_id = 'C001'
+    AND sc.score > 80
+  ORDER BY sc.score DESC;`,
+    answer: "SELECT s.name, sc.score FROM student s JOIN sc ON s.student_id=sc.student_id WHERE sc.course_id='C001' AND sc.score > (SELECT AVG(score) FROM sc WHERE course_id='C001') ORDER BY sc.score DESC;",
+    strictOrder: true,
+    hint: '把 <code>&gt; 80</code> 改成 <code>&gt; (SELECT AVG(score) FROM sc WHERE course_id=\'C001\')</code>。',
+    hints: [
+      '题目要"高于该课平均分"——平均分是多少你不用手算，能不能让 SQL 自己算？想一想<b>子查询</b>能不能返回一个<b>单值</b>？',
+      '目前示例用固定值 80 做过滤——你需要把 80 替换成一个能"动态算 C001 均分"的子查询。子查询长这样：<code>(SELECT AVG(score) FROM sc WHERE course_id=\'C001\')</code>，它返回一个数值。',
+      '把 <code>AND sc.score &gt; 80</code> 里的 <code>80</code> 换成 <code>(SELECT AVG(score) FROM sc WHERE course_id=\'C001\')</code>。这就是<b>标量子查询</b>——子查询作为单值，直接放在比较运算符右边。',
+    ],
+    note: '相关子查询是教材 ch08 顶点难度，务必掌握',
+  },
+
+  // ========================================
+  // ===== v0.5 新增 25 题 (P26-P50) =====
+  // ========================================
+
+  // ===== SELECT 续 +5 (P26-P30) =====
+  {
+    id: 'P26', group: 'select', title: '计算列：算年龄', difficulty: 'easy',
+    intro: 'SELECT 后面不仅可以写列名，还可以写<b>表达式</b>。比如用 <code>2026 - birth_year</code> 就能算出学生的年龄。表达式后面还可以加 <code>AS 别名</code> 让列标题更好看。',
+    imper: '请查询<b>所有学生</b>的姓名和<b>2026 年的年龄</b>（列标题显示为 age）。',
+    starter: 'SELECT name FROM student;',
+    answer: 'SELECT name, 2026 - birth_year AS age FROM student;',
+    strictOrder: false,
+    hint: '在 SELECT 后面加 <code>2026 - birth_year AS age</code> 即可，注意别忘了逗号。',
+    hints: [
+      'SELECT 后面可以写表达式，比如 <code>1 + 1</code> 都会返回 2。',
+      '用 <code>2026 - birth_year</code> 就能算出年龄。',
+      '完整写法：在 name 后面加逗号，再写 <code>2026 - birth_year AS age</code>。AS 可以给计算列起别名。',
+    ],
+  },
+  {
+    id: 'P27', group: 'select', title: '字符串拼接', difficulty: 'easy',
+    intro: '用 <code>||</code> 可以把两列内容拼到一起，比如 <code>name || sex</code>。如果还想中间加点文字，可以再加一组拼接：<code>name || \'，\' || department</code>。<b>注意</b>：如果某一列是 NULL，整段拼接结果会变成 NULL，需要配合 COALESCE 处理（下一题会学）。',
+    imper: '请查询每位学生的姓名和性别，拼成"<b>姓名(性别)</b>"格式（列标题 info）。',
+    starter: 'SELECT name, gender FROM student;',
+    answer: "SELECT name || '(' || gender || ')' AS info FROM student;",
+    strictOrder: false,
+    hint: '用 <code>||</code> 把字符串常量 \'<code>(</code>\'<code>、gender、\'</code>)<code>\' 依次拼到 name 后面，整段用 AS info 起别名。',
+    hints: [
+      '字符串常量要用单引号括起来，比如 \'<code>(</code><code>\'。</code>',
+      '拼接结构：<code>name || \'（左括号）\' || gender || \'（右括号）\'</code>。',
+      '完整写法：<code>SELECT name || \'(\' || gender || \')\' AS info FROM student;</code>',
+    ],
+  },
+  {
+    id: 'P28', group: 'select', title: 'COALESCE 处理 NULL', difficulty: 'easy',
+    intro: '<code>COALESCE(列, 默认值)</code> 会返回第一个非 NULL 的值。当成绩是 NULL 时显示 "未录入"，否则显示真实分数——这是最常用的 NULL 兜底写法。',
+    imper: '请查询<b>选课表(sc)</b>的所有记录，但 score 列显示成：NULL 换成 \'<code>未录入</code>\'，非 NULL 显示分数。列标题 result。',
+    starter: 'SELECT student_id, course_id, score FROM sc;',
+    answer: "SELECT student_id, course_id, COALESCE(CAST(score AS TEXT), '未录入') AS result FROM sc;",
+    strictOrder: false,
+    hint: '用 <code>COALESCE(score, \'未录入\')</code> 兜底；但 score 是整数，\'未录入\' 是字符串，需要先用 <code>CAST(score AS TEXT)</code> 把整数转成字符串，两者类型才能一致。',
+    hints: [
+      'COALESCE 的所有参数必须是同一类型，否则 sql.js 会按第一列的类型截断。',
+      '用 <code>CAST(score AS TEXT)</code> 把整数转成文本。',
+      '完整写法：<code>COALESCE(CAST(score AS TEXT), \'未录入\')</code> AS result。',
+    ],
+  },
+  {
+    id: 'P29', group: 'select', title: 'CASE WHEN 打等级', difficulty: 'medium',
+    intro: '<code>CASE WHEN 条件 THEN 结果 ... ELSE 默认结果 END</code> 就像 Excel 的 IF 嵌套，可以在 SELECT 里按条件输出不同值。成绩分级就是典型场景：≥90 优、≥80 良、≥70 中、≥60 及格、其他不及格。<b>注意</b>：NULL 参与比较结果是 UNKNOWN，会跳过所有 WHEN 走到 ELSE，要单独用 <code>WHEN score IS NULL THEN</code> 处理。',
+    imper: '请查询<b>选课表(sc)</b>的所有记录（只要 student_id、course_id、score），新增一列 grade 显示等级：NULL\'未录入\' / ≥90\'优\' / ≥80\'良\' / ≥70\'中\' / ≥60\'及格\' / 其他\'不及格\'。',
+    starter: 'SELECT student_id, course_id, score FROM sc;',
+    answer: `SELECT student_id, course_id, score,
+  CASE
+    WHEN score IS NULL THEN '未录入'
+    WHEN score >= 90 THEN '优'
+    WHEN score >= 80 THEN '良'
+    WHEN score >= 70 THEN '中'
+    WHEN score >= 60 THEN '及格'
+    ELSE '不及格'
+  END AS grade
+FROM sc;`,
+    strictOrder: false,
+    hint: '第一条 WHEN 就写 <code>WHEN score IS NULL THEN \'未录入\'</code>，因为 NULL &gt;= 90 结果是 UNKNOWN 会被跳过。CASE WHEN 按顺序求值，命中一个就停。',
+    hints: [
+      'NULL &gt;= 90 的结果不是 FALSE 而是 UNKNOWN，所以 NULL 记录会跳过 WHEN score &gt;= 90 这段。',
+      '要在第一条加 <code>WHEN score IS NULL THEN \'未录入\'</code>，把 NULL 情况单独拎出来。',
+      '完整结构：<code>CASE WHEN score IS NULL THEN \'未录入\' WHEN ... THEN ... ELSE \'不及格\' END AS grade</code>。',
+    ],
+  },
+  {
+    id: 'P30', group: 'select', title: '字符串函数', difficulty: 'medium',
+    intro: 'SQLite 常用的字符串函数：<code>LEFT(s, n)</code> 取左边 n 个字符；<code>RIGHT(s, n)</code> 取右边 n 个字符；<code>SUBSTR(s, start, len)</code> 从 start 开始取 len 个字符（start 从 1 开始）；<code>LENGTH(s)</code> 返回字符数。注意：sql.js 不支持 RIGHT()，可用 <code>SUBSTR(s, -n)</code> 替代。',
+    imper: '请查询<b>课程表(course)</b>，显示：课程名前 2 个字符(front2)、课程名后 2 个字符(last2)、课程名字符长度(len)。',
+    starter: "SELECT course_name FROM course WHERE course_id = 'C001';",
+    answer: 'SELECT course_name, SUBSTR(course_name, 1, 2) AS front2, SUBSTR(course_name, -2) AS last2, LENGTH(course_name) AS len FROM course;',
+    strictOrder: false,
+    hint: 'substr(course_name, 1, 2) 取前 2 字；substr(course_name, -2) 取末 2 字（sql.js 用负数起始位置代替 RIGHT）；length(course_name) 算长度。',
+    hints: [
+      'SUBSTR(s, start, len)：start 为负数时从末尾算。',
+      'LENGTH(s) 直接返回字符数（不是字节数）。',
+      '三列分别是 <code>SUBSTR(course_name, 1, 2)</code> / <code>SUBSTR(course_name, -2)</code> / <code>LENGTH(course_name)</code>。',
+    ],
+  },
+
+  // ===== WHERE 续 +3 (P31-P33) =====
+  {
+    id: 'P31', group: 'where', title: 'NOT IN 反向筛选', difficulty: 'easy',
+    intro: '上一题学了 IN 筛选"在集合里"的。反过来，<code>NOT IN</code> 就是"不在集合里"。常用于排除特定 ID、特定人。',
+    imper: '请查出<b>不在</b>计算机科学、数学这两个系的所有学生（返回姓名、系名）。',
+    starter: 'SELECT * FROM student WHERE department = \'计算机科学\';',
+    answer: "SELECT name, department FROM student WHERE department NOT IN ('计算机科学', '数学');",
+    strictOrder: false,
+    hint: '把 <code>department = ...</code> 改成 <code>department NOT IN (\'计算机科学\', \'数学\')</code>。',
+    hints: [
+      'IN (...) 是多个 OR 的简写；NOT IN (...) 就是多个 &lt;&gt; 的简写。',
+      '括号里用逗号分隔多个值，每个值都要用单引号。',
+      '完整写法：<code>WHERE department NOT IN (\'计算机科学\', \'数学\')</code>。',
+    ],
+  },
+  {
+    id: 'P32', group: 'where', title: '复合条件与优先级', difficulty: 'easy',
+    intro: '当 AND 和 OR 同时出现时，<b>AND 优先级高于 OR</b>。比如 <code>A OR B AND C</code> 会被解析成 <code>A OR (B AND C)</code>，结果可能跟直觉不一样。遇到复杂条件，<b>用括号明确优先级</b>是安全做法。',
+    imper: '请查出<b>计算机科学系或软件工程系</b>中，<b>2006 年出生</b>的学生（姓名、系、出生年）。',
+    starter: 'SELECT name, department, birth_year FROM student WHERE department = \'计算机科学\' AND birth_year = 2006;',
+    answer: "SELECT name, department, birth_year FROM student WHERE (department = '计算机科学' OR department = '软件工程') AND birth_year = 2006;",
+    strictOrder: false,
+    hint: '用括号把两个系名条件包起来：<code>(department = ... OR department = ...)</code>，再 AND birth_year = 2006。',
+    hints: [
+      '如果不加括号，<code>A OR B AND C</code> 会按 <code>A OR (B AND C)</code> 解析，结果会多出"计算机科学所有学生"。',
+      '用圆括号显式分组：<code>(A OR B) AND C</code>。',
+      '完整写法：<code>WHERE (department = \'计算机科学\' OR department = \'软件工程\') AND birth_year = 2006</code>。',
+    ],
+  },
+  {
+    id: 'P33', group: 'where', title: '多条 LIKE 匹配', difficulty: 'medium',
+    intro: 'LIKE 可以写多次用 AND 串起来，相当于"同时满足多个模糊匹配"。典型场景：姓名里既要有某字，还要满足某模式。',
+    imper: '请查出<b>姓名里既包含"张"又包含"敏"</b>的学生（返回姓名、系）。',
+    starter: "SELECT name, department FROM student WHERE name LIKE '张%';",
+    answer: "SELECT name, department FROM student WHERE name LIKE '%张%' AND name LIKE '%敏%';",
+    strictOrder: false,
+    hint: 'LIKE 可以同时写多个：<code>name LIKE \'%张%\' AND name LIKE \'%敏%\'</code>，相当于"名字里既有张也有敏"。',
+    hints: [
+      'LIKE 是单列单次匹配，要看"同时包含多个字"就要写多个 LIKE 用 AND 串起来。',
+      '每个 LIKE 前后都要加 % 表示任意位置出现。',
+      '完整写法：<code>WHERE name LIKE \'%张%\' AND name LIKE \'%敏%\'</code>。',
+    ],
+  },
+
+  // ===== ORDER 续 +2 (P34-P35) =====
+  {
+    id: 'P34', group: 'order', title: 'ORDER BY 表达式排序', difficulty: 'easy',
+    intro: 'ORDER BY 后面不只能写列名，也可以写<b>表达式</b>，比如按年龄、按成绩换算排序。甚至可以用 SELECT 里的别名。',
+    imper: '请查出所有学生，按<b>年龄从小到大</b>排序（年龄 = 2026 - birth_year，同时显示年龄列 age）。',
+    starter: 'SELECT name, birth_year FROM student ORDER BY birth_year;',
+    answer: 'SELECT name, 2026 - birth_year AS age FROM student ORDER BY age;',
+    strictOrder: true,
+    hint: 'ORDER BY 可以直接用 SELECT 里的别名 age，年龄小在前是升序（默认），不用写 ASC。',
+    hints: [
+      'SELECT 里已经算了 age 别名，ORDER BY 就能直接用。',
+      '年龄小 = 出生年大，但直接 ORDER BY age 更直观。',
+      '完整写法：SELECT 里加 <code>2026 - birth_year AS age</code>，ORDER BY <code>age</code>。',
+    ],
+  },
+  {
+    id: 'P35', group: 'order', title: 'LIMIT + OFFSET 分页', difficulty: 'medium',
+    intro: '<code>LIMIT n</code> 只取前 n 条；加上 <code>OFFSET m</code> 跳过前 m 条再取。这是"分页查询"的骨架：每页 n 条，第 k 页就用 OFFSET (k-1)*n。',
+    imper: '请查出学生表按学号升序排列后的<b>第 6-10 条</b>（即跳过前 5 条，取 5 条）。显示学号、姓名。',
+    starter: 'SELECT student_id, name FROM student ORDER BY student_id LIMIT 5;',
+    answer: 'SELECT student_id, name FROM student ORDER BY student_id LIMIT 5 OFFSET 5;',
+    strictOrder: true,
+    hint: '在 LIMIT 5 后加 <code>OFFSET 5</code>，就能跳过前 5 条，取第 6-10 条。',
+    hints: [
+      'OFFSET 表示"跳过多少条"，OFFSET 5 就是跳过前 5 条。',
+      'LIMIT + OFFSET 配合 ORDER BY 使用才能确定取到哪些具体记录。',
+      '完整写法：<code>ORDER BY student_id LIMIT 5 OFFSET 5</code>。',
+    ],
+  },
+
+  // ===== AGG 续 +6 (P36-P41) =====
+  {
+    id: 'P36', group: 'agg', title: 'COUNT DISTINCT 去重计数', difficulty: 'easy',
+    intro: '<code>COUNT(*)</code> 算行数（含重复），<code>COUNT(列)</code> 算非 NULL 个数；<code>COUNT(DISTINCT 列)</code> 算列里有多少个<b>不同的非 NULL 值</b>。想知道"有多少人选过课"（不管选几门），就要 DISTINCT 学号。',
+    imper: '请查询<b>有多少个不同的学生</b>在选课表里留下过记录。',
+    starter: 'SELECT COUNT(*) FROM sc;',
+    answer: 'SELECT COUNT(DISTINCT student_id) FROM sc;',
+    strictOrder: false,
+    hint: '把 <code>COUNT(*)</code> 改成 <code>COUNT(DISTINCT student_id)</code>，同一个学生选多门课也只会被算一次。',
+    hints: [
+      'COUNT(*) 会算出选课记录总数（含重复学生），但题目要"不同学生数"。',
+      'DISTINCT 去重后再 COUNT，就能得到不同学号的个数。',
+      '完整写法：<code>COUNT(DISTINCT student_id)</code>。',
+    ],
+  },
+  {
+    id: 'P37', group: 'agg', title: '条件计数', difficulty: 'easy',
+    intro: '把 COUNT 和 CASE WHEN 结合：<code>COUNT(CASE WHEN 条件 THEN 1 END)</code>，可以只统计满足条件的行数。因为 COUNT 会跳过 NULL，CASE 不命中时返回的 NULL 就不被计数。',
+    imper: '请查询选课表里<b>成绩 ≥ 90 的记录数</b>。',
+    starter: 'SELECT COUNT(*) FROM sc;',
+    answer: 'SELECT COUNT(CASE WHEN score >= 90 THEN 1 END) FROM sc;',
+    strictOrder: false,
+    hint: '用 <code>COUNT(CASE WHEN score &gt;= 90 THEN 1 END)</code>，CASE 不命中时默认返回 NULL，COUNT 会跳过它。',
+    hints: [
+      'COUNT(列) 会跳过 NULL，只计非 NULL 个数。',
+      'CASE WHEN 不命中时返回 NULL，刚好被 COUNT 跳过。',
+      '完整写法：<code>COUNT(CASE WHEN score &gt;= 90 THEN 1 END)</code>。',
+    ],
+  },
+  {
+    id: 'P38', group: 'agg', title: '每人选课门数', difficulty: 'medium',
+    intro: '上一题的条件计数是对全表统计；如果想对<b>每个学生分别</b>统计，就要用 GROUP BY student_id。GROUP BY 把表按某列分组，每组独立做聚合。',
+    imper: '请查询<b>每个学生</b>的选课门数和<b>平均分</b>（返回学号、选课门数、平均分，平均分保留 2 位小数）。',
+    starter: 'SELECT student_id, COUNT(*) FROM sc;',
+    answer: 'SELECT student_id, COUNT(*) AS cnt, ROUND(AVG(score), 2) AS avg_score FROM sc GROUP BY student_id;',
+    strictOrder: false,
+    hint: 'GROUP BY student_id 让每个学生成为一组，组内独立算 COUNT 和 AVG。',
+    hints: [
+      'SELECT 里除了聚合函数外的列，必须出现在 GROUP BY 里。',
+      'ROUND(AVG(score), 2) 把平均分四舍五入到 2 位小数。',
+      '完整写法：<code>GROUP BY student_id</code>，SELECT 里加 <code>COUNT(*) AS cnt</code> 和 <code>ROUND(AVG(score), 2) AS avg_score</code>。',
+    ],
+  },
+  {
+    id: 'P39', group: 'agg', title: '双字段分组', difficulty: 'medium',
+    intro: 'GROUP BY 可以跟多个列，表示按<b>这些列的组合</b>分组。比如按"系 + 性别"分组，就能得到每个系每个性别的统计。',
+    imper: '请统计<b>每个系、每种性别</b>的学生人数（返回系、性别、人数，按系、性别排序）。',
+    starter: 'SELECT department, COUNT(*) FROM student GROUP BY department;',
+    answer: "SELECT department, gender, COUNT(*) AS cnt FROM student GROUP BY department, gender ORDER BY department, gender;",
+    strictOrder: true,
+    hint: '在 GROUP BY 里再加一列 gender，SELECT 也要把 gender 加出来。',
+    hints: [
+      'GROUP BY A, B 表示按 (A, B) 的每种组合独立分组。',
+      'SELECT 里 department, gender 都要出现，再加聚合 COUNT(*)。',
+      '完整写法：<code>GROUP BY department, gender ORDER BY department, gender</code>。',
+    ],
+  },
+  {
+    id: 'P40', group: 'agg', title: '每门课及格率', difficulty: 'hard',
+    intro: '及格率 = 及格人数 ÷ 总人数。"及格人数"用条件计数 <code>COUNT(CASE WHEN score &gt;= 60 THEN 1 END)</code>，"总人数"用 <code>COUNT(*)</code>。两者相除时，要<b>先转成浮点数</b>，否则整数除法会把结果截成 0。',
+    imper: '请查询<b>每门课</b>的选课人数、及格人数和及格率（按课程号排序，及格率保留 2 位小数）。',
+    starter: 'SELECT course_id, COUNT(*) AS cnt FROM sc GROUP BY course_id;',
+    answer: 'SELECT course_id, COUNT(*) AS cnt, COUNT(CASE WHEN score >= 60 THEN 1 END) AS pass_cnt, ROUND(1.0 * COUNT(CASE WHEN score >= 60 THEN 1 END) / COUNT(*), 2) AS pass_rate FROM sc GROUP BY course_id ORDER BY course_id;',
+    strictOrder: true,
+    hint: '及格率 = <code>ROUND(1.0 * 条件COUNT / COUNT(*), 2)</code>。关键：<code>1.0 *</code> 把整数除法转成浮点除法。',
+    hints: [
+      'SQLite 里 5 / 10 = 0（整数除法），1.0 * 5 / 10 = 0.5（浮点除法）。',
+      '及格人数：COUNT(CASE WHEN score &gt;= 60 THEN 1 END)。',
+      '完整分子分母：<code>1.0 * COUNT(CASE WHEN score &gt;= 60 THEN 1 END) / COUNT(*)</code>，外层套 ROUND(..., 2)。',
+    ],
+  },
+  {
+    id: 'P41', group: 'agg', title: '分数段分布', difficulty: 'hard',
+    intro: '分组统计不仅可以按真实列分组，还可以按 CASE WHEN 表达式分组——这就是"<b>动态分组</b>"。把分数段塞进 CASE 里变成组标识，每组人数一 COUNT 就是分布。',
+    imper: '请统计选课表里<b>每个分数段的人数</b>：[0,60) 不及格、[60,70) 及格、[70,80) 中、[80,90) 良、[90,100] 优。显示 grade 和 cnt，按优→良→中→及格→不及格的顺序排。',
+    starter: 'SELECT score, COUNT(*) FROM sc GROUP BY score;',
+    answer: `SELECT
+  CASE
+    WHEN score >= 90 THEN '优'
+    WHEN score >= 80 THEN '良'
+    WHEN score >= 70 THEN '中'
+    WHEN score >= 60 THEN '及格'
+    ELSE '不及格'
+  END AS grade,
+  COUNT(*) AS cnt
+FROM sc
+WHERE score IS NOT NULL
+GROUP BY grade
+ORDER BY
+  CASE grade
+    WHEN '优' THEN 1
+    WHEN '良' THEN 2
+    WHEN '中' THEN 3
+    WHEN '及格' THEN 4
+    ELSE 5
+  END;`,
+    strictOrder: true,
+    hint: 'SELECT 里用 CASE 把 score 映射成等级名 grade，再 GROUP BY grade。ORDER BY 再套一层 CASE 自定义排序顺序。',
+    hints: [
+      '先 WHERE score IS NOT NULL 把 NULL 成绩排除掉。',
+      'GROUP BY 可以用 SELECT 里的别名 grade。',
+      'ORDER BY CASE 自定义排序：<code>CASE grade WHEN \'优\' THEN 1 WHEN \'良\' THEN 2 ... END</code>。',
+    ],
+  },
+
+  // ===== JOIN 续 +4 (P42-P45) =====
+  {
+    id: 'P42', group: 'join', title: 'LEFT JOIN 含 0 的计数', difficulty: 'medium',
+    intro: '用 LEFT JOIN 把"主体表"和"关联表"连起来，再用 COUNT(关联表的列)。因为<b>关联列 NULL 时 COUNT 会跳过</b>，所以没人关联的主体记录会得到 0。',
+    imper: '请查询<b>每个学生的选课门数</b>，包括<b>没选过课的学生</b>（显示 0）。返回姓名、选课门数，按选课门数降序、学号升序排。',
+    starter: 'SELECT s.name, COUNT(*) AS cnt FROM student s JOIN sc ON s.student_id = sc.student_id GROUP BY s.student_id;',
+    answer: 'SELECT s.name, COUNT(sc.student_id) AS cnt FROM student s LEFT JOIN sc ON s.student_id = sc.student_id GROUP BY s.student_id, s.name ORDER BY cnt DESC, s.student_id;',
+    strictOrder: true,
+    hint: '关键两点：① 用 LEFT JOIN 让没选课的学生也出现；② COUNT(sc.student_id) 而不是 COUNT(*)——后者会把 NULL 行也计成 1。',
+    hints: [
+      'COUNT(*) 永远每行都算 1，LEFT JOIN 后没选课的学生会被误算成 1。',
+      '要 COUNT 关联表的某一列（如 sc.student_id），NULL 会被跳过，没选课的学生就是 0。',
+      '完整写法：<code>LEFT JOIN sc ... GROUP BY s.student_id ORDER BY cnt DESC, s.student_id</code>。',
+    ],
+  },
+  {
+    id: 'P43', group: 'join', title: '三表 JOIN 分组', difficulty: 'medium',
+    intro: 'JOIN 可以串多个：先从 A JOIN B，再 JOIN C，就能把三张表的信息都拉齐。典型场景：学生 - 选课 - 课程，一次查询拿到"某人选了某课、得了某分"。',
+    imper: '请查询<b>每个系的平均成绩</b>（按系聚合选课表里的分数）。返回系、平均分（保留 2 位），按均分降序排。',
+    starter: 'SELECT s.department, sc.score FROM student s JOIN sc ON s.student_id = sc.student_id;',
+    answer: 'SELECT s.department, ROUND(AVG(sc.score), 2) AS avg_score FROM student s JOIN sc ON s.student_id = sc.student_id GROUP BY s.department ORDER BY avg_score DESC;',
+    strictOrder: true,
+    hint: '三表 JOIN 里只用到 student + sc，department 来自 student，score 来自 sc，GROUP BY 按 department。',
+    hints: [
+      'department 来自 student 表，score 来自 sc 表，JOIN 后就可以一起用了。',
+      'GROUP BY s.department 让每个系成为一组，AVG(sc.score) 算组内均分。',
+      '完整写法：<code>GROUP BY s.department ORDER BY ROUND(AVG(sc.score), 2) DESC</code>。',
+    ],
+  },
+  {
+    id: 'P44', group: 'join', title: 'LEFT JOIN 找不及格', difficulty: 'hard',
+    intro: 'LEFT JOIN + 聚合可以解决"某些学生没有任何关联记录"类问题。反过来 JOIN + WHERE 可以找"某科不及格的学生"，要先用 JOIN 把选课记录和学生信息拉齐，再 WHERE 过滤不及格。',
+    imper: '请查出<b>选了"信号与系统"课但不及格（&lt;60）</b>的学生（返回姓名、系、分数，按分数升序）。',
+    starter: 'SELECT s.name, sc.score FROM student s JOIN sc ON s.student_id = sc.student_id WHERE sc.course_id = \'C010\';',
+    answer: "SELECT s.name, s.department, sc.score FROM student s JOIN sc ON s.student_id = sc.student_id JOIN course c ON sc.course_id = c.course_id WHERE c.course_name = '信号与系统' AND sc.score < 60 ORDER BY sc.score;",
+    strictOrder: true,
+    hint: '三表 JOIN 用 course 表拿到课程名过滤（而不是硬编码 course_id），再加 sc.score &lt; 60 限制不及格。',
+    hints: [
+      '用 course 表 JOIN 后，WHERE 条件写 <code>c.course_name = \'信号与系统\'</code>，不用硬记 C010。',
+      '不及格条件 <code>sc.score &lt; 60</code>，注意 NULL 不会命中，符合预期。',
+      '完整 WHERE：<code>c.course_name = \'信号与系统\' AND sc.score &lt; 60</code>。',
+    ],
+  },
+  {
+    id: 'P45', group: 'join', title: '自连接：找同系同学', difficulty: 'hard',
+    intro: '<b>自连接</b>：把一张表当两张用，给它起两个不同的别名（a、b），再 JOIN。典型场景：找"同系的同学对"、"比自己成绩高的同课同学"。',
+    imper: '请查出<b>和刘洋（20240105）同系</b>的其他学生（返回姓名、系）。不要包含刘洋自己。',
+    starter: 'SELECT name FROM student WHERE department = \'计算机科学\';',
+    answer: "SELECT b.name, b.department FROM student a JOIN student b ON a.department = b.department WHERE a.student_id = '20240105' AND b.student_id <> '20240105';",
+    strictOrder: false,
+    hint: '把 student 表起两个别名 a 和 b，用 <code>a.department = b.department</code> 把同系人配对起来，WHERE 固定 a 是刘洋、排除 b 是刘洋自己。',
+    hints: [
+      'FROM student a JOIN student b 是把同一张表"分身"成 a、b 两份。',
+      'JOIN 条件写 <code>a.department = b.department</code>，让 a 的每个同学匹配同系的所有 b。',
+      'WHERE 两段：<code>a.student_id = \'20240105\'</code> 锁定刘洋、<code>b.student_id &lt;&gt; \'20240105\'</code> 排除自己。',
+    ],
+  },
+
+  // ===== SUB 续 +5 (P46-P50) =====
+  {
+    id: 'P46', group: 'sub', title: 'EXISTS 存在判断', difficulty: 'medium',
+    intro: '<code>EXISTS (子查询)</code> 只要子查询返回至少一行就为 TRUE，否则为 FALSE。它不关心返回什么值、返回多少行，只关心"有没有"。比 IN 更高效，因为找到第一行就停。',
+    imper: '请用 EXISTS 查出<b>有学生选的课</b>（返回课程号、课程名）。',
+    starter: 'SELECT * FROM course;',
+    answer: "SELECT course_id, course_name FROM course c WHERE EXISTS (SELECT 1 FROM sc WHERE sc.course_id = c.course_id);",
+    strictOrder: false,
+    hint: '外层 WHERE 加 <code>EXISTS (SELECT 1 FROM sc WHERE sc.course_id = c.course_id)</code>，子查询引用外层的 c.course_id 叫<b>相关子查询</b>。',
+    hints: [
+      'EXISTS 的子查询通常用 <code>SELECT 1</code> 而不是 <code>SELECT *</code>，因为只关心有没有行。',
+      '子查询里 <code>sc.course_id = c.course_id</code> 引用了外层的 c，这叫"相关"。',
+      '完整写法：<code>WHERE EXISTS (SELECT 1 FROM sc WHERE sc.course_id = c.course_id)</code>。',
+    ],
+  },
+  {
+    id: 'P47', group: 'sub', title: 'NOT EXISTS 找无人问津', difficulty: 'medium',
+    intro: '<code>NOT EXISTS</code> 就是"找不到任何匹配"。常用于"找出没有 X 的 Y"，比如"没选课的学生""没人选的课程"。',
+    imper: '请用 NOT EXISTS 查出<b>没有任何学生选的课程</b>（返回课程号、课程名）。',
+    starter: 'SELECT * FROM course WHERE course_id NOT IN (SELECT course_id FROM sc);',
+    answer: "SELECT course_id, course_name FROM course c WHERE NOT EXISTS (SELECT 1 FROM sc WHERE sc.course_id = c.course_id);",
+    strictOrder: false,
+    hint: '把 <code>NOT IN</code> 换成 <code>NOT EXISTS</code>，子查询里加 <code>sc.course_id = c.course_id</code> 关联。',
+    hints: [
+      'NOT IN 子查询不能含 NULL，否则结果可能出错；NOT EXISTS 更稳健。',
+      '子查询里用 <code>sc.course_id = c.course_id</code> 关联外层。',
+      '完整写法：<code>WHERE NOT EXISTS (SELECT 1 FROM sc WHERE sc.course_id = c.course_id)</code>。',
+    ],
+  },
+  {
+    id: 'P48', group: 'sub', title: 'FROM 子查询（派生表）', difficulty: 'medium',
+    intro: '子查询不仅可以放在 WHERE 里，也可以放在 <code>FROM</code> 后面当一张"临时表"用，这叫<b>派生表</b>（derived table）。派生表必须起别名。',
+    imper: '先用子查询算出<b>每门课的平均分</b>（course_id + avg_score），再用这个结果查平均分 &gt; 80 的课程名。返回课程号、课程名、均分（保留 2 位）。',
+    starter: 'SELECT course_id, AVG(score) FROM sc GROUP BY course_id;',
+    answer: "SELECT c.course_id, c.course_name, t.avg_score FROM course c JOIN (SELECT course_id, ROUND(AVG(score), 2) AS avg_score FROM sc GROUP BY course_id) t ON c.course_id = t.course_id WHERE t.avg_score > 80;",
+    strictOrder: false,
+    hint: 'FROM 子查询：<code>(SELECT course_id, ROUND(AVG(score), 2) AS avg_score FROM sc GROUP BY course_id) t</code>，外层 JOIN course 拿到课程名。',
+    hints: [
+      'FROM 后的子查询必须用括号包起来，还要起别名（如 t）。',
+      '外层 JOIN 时像普通表一样 <code>t.course_id</code> 引用。',
+      '完整写法：<code>FROM course c JOIN (...) t ON ... WHERE t.avg_score &gt; 80</code>。',
+    ],
+  },
+  {
+    id: 'P49', group: 'sub', title: 'ANY / ALL 用法', difficulty: 'hard',
+    intro: '<code>&gt; ALL (子查询)</code> 表示"大于子查询结果里的<b>每一个</b>"，等价于大于最大值。<code>&gt; ANY</code> 表示"至少大于其中一个"，等价于大于最小值。sql.js 不支持 ALL/ANY 关键字，可以用 <code>&gt; (SELECT MAX(...) ...)</code> 等价替代。',
+    imper: '请查出<b>分数高于所有数学系学生最高分</b>的选课记录（返回学号、课程号、分数）。用子查询 + MAX 实现。',
+    starter: 'SELECT * FROM sc WHERE score > 90;',
+    answer: 'SELECT student_id, course_id, score FROM sc WHERE score > (SELECT MAX(score) FROM sc JOIN student ON sc.student_id = student.student_id WHERE student.department = \'数学\');',
+    strictOrder: false,
+    hint: '"高于数学系最高分" = <code>score &gt; (SELECT MAX(score) FROM sc JOIN student ... WHERE department = \'数学\')</code>。',
+    hints: [
+      '先写子查询算数学系最高分：<code>SELECT MAX(score) FROM sc JOIN student ... WHERE department = \'数学\'</code>。',
+      '外层 <code>WHERE score &gt; (子查询)</code>，括号包起来。',
+      '注意 SQL 标准里的 <code>&gt; ALL (子查询)</code> 等价于 <code>&gt; (SELECT MAX(...) ...)</code>。',
+    ],
+  },
+  {
+    id: 'P50', group: 'sub', title: '每系数据库课最高分', difficulty: 'hard',
+    intro: '这是前面几个技巧的综合：JOIN 拉齐学生与选课 + GROUP BY 按系分组 + 聚合求 MAX。如果想显示系名（而非系号），就要 JOIN student 拿 department 列。',
+    imper: '请查出<b>每个系在"数据库原理及应用"课上的最高分</b>（返回系、最高分）。只统计选过这门课的系，按最高分降序排。',
+    starter: 'SELECT department, MAX(score) FROM student JOIN sc ON student.student_id = sc.student_id GROUP BY department;',
+    answer: "SELECT s.department, MAX(sc.score) AS max_score FROM student s JOIN sc ON s.student_id = sc.student_id WHERE sc.course_id = 'C001' GROUP BY s.department ORDER BY max_score DESC;",
+    strictOrder: true,
+    hint: '在 JOIN 后加 <code>WHERE sc.course_id = \'C001\'</code> 锁定数据库课，再 GROUP BY department 聚合 MAX(score)。',
+    hints: [
+      'JOIN 后 WHERE 先过滤课程，再 GROUP BY 才不会把别的课的分数混进来。',
+      '数学系没人选 C001，会自动不出现在结果里（INNER JOIN 的特性）。',
+      '完整写法：<code>WHERE sc.course_id = \'C001\' GROUP BY s.department ORDER BY max_score DESC</code>。',
+    ],
+  },
+];
+
+// ============ 全局状态 ============
+let SQL, db;
+let currentGroup = GROUPS[0].key;
+let progress = JSON.parse(localStorage.getItem('sqlplay_progress_v3') || '{}');
+
+// ============ 初始化 ============
+async function init() {
+  try {
+    SQL = await initSqlJs({ locateFile: f => `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}` });
+    resetDB(true);
+    setStatus('ready', '就绪 · SQLite in-browser');
+    renderNav();
+    renderMain(currentGroup);
+    updateProgress();
+  } catch (e) {
+    setStatus('error', '加载失败: ' + e.message);
+    console.error(e);
+  }
+}
+
+function setStatus(cls, text) {
+  const el = document.getElementById('status-badge');
+  el.className = cls;
+  el.textContent = text;
+}
+
+function resetDB(silent) {
+  if (db) db.close();
+  db = new SQL.Database();
+  db.run(INIT_SQL);
+  if (!silent) alert('数据库已重置为初始状态。');
+}
+
+// ============ 侧边栏导航 ============
+function renderNav() {
+  const container = document.getElementById('nav-list');
+  let html = '';
+  GROUPS.forEach(g => {
+    const groupPassed = LESSONS.filter(L => L.group === g.key && progress[L.id] === 'passed').length;
+    const groupTotal = LESSONS.filter(L => L.group === g.key).length;
+    html += `<div class="lesson-group ${g.key === currentGroup ? 'active' : ''}" onclick="selectGroup('${g.key}')">
+      <span>${g.icon}</span>
+      <span>${g.title}</span>
+      <span style="margin-left:auto;font-size:11px;color:#8b949e;font-weight:400;">${groupPassed}/${groupTotal}</span>
+    </div>`;
+    if (g.key === currentGroup) {
+      LESSONS.filter(L => L.group === g.key).forEach(L => {
+        const state = progress[L.id] || 'none';
+        html += `<div class="lesson-item ${state}" onclick="scrollToQu('${L.id}')">
+          <span class="lesson-num">${L.id}</span>
+          <span class="title-text">${L.title}</span>
+          <span class="status-dot"></span>
+        </div>`;
+      });
+    }
+  });
+  container.innerHTML = html;
+}
+
+function selectGroup(key) {
+  currentGroup = key;
+  renderNav();
+  renderMain(key);
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function scrollToQu(id) {
+  const el = document.getElementById('qu-' + id);
+  if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+// ============ 主区渲染 ============
+function renderMain(groupKey) {
+  const g = GROUPS.find(x => x.key === groupKey);
+  const lessons = LESSONS.filter(L => L.group === groupKey);
+  const main = document.getElementById('main-content');
+
+  let html = `
+    <div class="group-header">
+      <h1>${g.icon} ${g.title}</h1>
+      <div class="subtitle">${g.subtitle}</div>
+    </div>
+    ${renderDBPreview(g.tables)}
+  `;
+
+  lessons.forEach(L => {
+    html += renderQu(L);
+  });
+
+  main.innerHTML = html;
+
+  // 绑定每题的事件
+  lessons.forEach(L => bindQuEvents(L));
+}
+
+// ============ 顶部数据表预览 ============
+function renderDBPreview(tables) {
+  const tabs = tables.map((t, i) =>
+    `<div class="tab ${i === 0 ? 'active' : ''}" onclick="switchDBTab('${t}', this)">${t}</div>`
+  ).join('');
+  return `
+    <div class="db-preview">
+      <div class="db-preview-header">
+        <span>📊 数据表预览（本节涉及的表，共 ${tables.length} 张）</span>
+        <div class="tabs">${tabs}</div>
+      </div>
+      <div class="db-preview-body" id="db-preview-body">${renderTablePreview(tables[0])}</div>
+    </div>
+  `;
+}
+
+function switchDBTab(t, el) {
+  el.parentNode.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('db-preview-body').innerHTML = renderTablePreview(t);
+}
+
+function renderTablePreview(t) {
+  try {
+    const res = db.exec(`SELECT * FROM ${t}`);
+    if (!res.length) return '<div style="padding:20px;color:#8b949e">（空表）</div>';
+    const { columns, values } = res[0];
+    const shown = values.slice(0, 8);
+    let html = '<table><thead><tr>';
+    columns.forEach(c => { html += `<th>${escapeHtml(c)}</th>`; });
+    html += '</tr></thead><tbody>';
+    shown.forEach(row => {
+      html += '<tr>';
+      row.forEach(v => {
+        const isNum = typeof v === 'number';
+        const cls = isNum ? ' class="r"' : '';
+        html += `<td${cls}>${v === null ? '<i style="color:#8b949e">NULL</i>' : escapeHtml(String(v))}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    if (values.length > shown.length) {
+      html += `<div style="padding:6px 12px;color:#8b949e;font-size:11px;">…共 ${values.length} 行，仅显示前 ${shown.length} 行</div>`;
+    }
+    return html;
+  } catch (e) {
+    return `<div style="padding:20px;color:#cf222e">读取失败: ${e.message}</div>`;
+  }
+}
+
+// ============ 题目卡片渲染 ============
+function renderQu(L) {
+  const state = progress[L.id] || 'none';
+  const stateIcon = state === 'passed' ? '✅' : (state === 'attempted' ? '🟠' : '');
+  return `
+    <div class="qu" id="qu-${L.id}">
+      <h2>
+        <span class="qid">${L.id}</span>
+        <span>${L.title}</span>
+        <span class="badge ${L.difficulty}">${difficultyLabel(L.difficulty)}</span>
+        <span style="margin-left:auto;font-size:14px">${stateIcon}</span>
+      </h2>
+      <div class="intro">${L.intro}</div>
+      <div class="imper">🎯 ${L.imper}</div>
+      ${L.note ? `<div class="note">📌 ${L.note}</div>` : ''}
+      <div class="editor-wrap">
+        <textarea id="sql-${L.id}" spellcheck="false">${escapeHtml(L.starter)}</textarea>
+        <button class="reset-starter" onclick="resetStarter('${L.id}')" title="恢复起手 SQL">↺ 起手</button>
+      </div>
+      <div class="qu-actions">
+        <button class="blue" onclick="runQu('${L.id}')">▶ 运行</button>
+        <button class="primary" onclick="checkQu('${L.id}')">✓ 对答案</button>
+        <button class="ghost" onclick="clearQu('${L.id}')">🗑 清空</button>
+      </div>
+      <div class="feedback" id="feedback-${L.id}"></div>
+      <div class="result-box" id="result-${L.id}">
+        <div class="result-header">
+          <span id="result-title-${L.id}">运行结果</span>
+          <span id="result-meta-${L.id}"></span>
+        </div>
+        <div class="result-body" id="result-body-${L.id}"></div>
+      </div>
+      ${(() => {
+        const hintsArr = L.hints || (L.hint ? [L.hint] : ['独立思考一下~']);
+        const total = hintsArr.length;
+        if (total <= 1) {
+          return `<details class="hint-block"><summary>💡 提示</summary><div>${hintsArr[0]}</div></details>`;
+        }
+        const items = hintsArr.map((h, i) => `<div class="hint-item" id="hint-item-${L.id}-${i}"${i > 0 ? ' style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #ffdfb5"' : ''}><b>提示 ${i + 1}：</b>${h}</div>`).join('');
+        return `<details class="hint-block">
+        <summary>💡 分级提示 · <span id="hint-shown-${L.id}">1</span>/${total}</summary>
+        <div>
+          ${items}
+          <button id="hint-more-${L.id}" onclick="showNextHint('${L.id}', ${total})" style="margin-top:10px; font-size:12px; padding:4px 10px; background:#fff; border:1px solid #ffdfb5; color:#953800; border-radius:4px; cursor:pointer;">👇 继续查看下一条提示</button>
+        </div>
+      </details>`;
+      })()}
+      <details class="ans-block">
+        <summary>👀 参考答案</summary>
+        <div>
+          <div id="ans-warn-${L.id}" style="padding:4px 0;">
+            <div style="color:#57606a; font-size:12px; margin-bottom:6px;">⚠️ 看答案后就不算你独立完成了哦～建议先按提示多试几次</div>
+            <button onclick="revealAnswer('${L.id}')" style="font-size:12px; padding:4px 12px; background:#0969da; color:white; border:none; border-radius:4px; cursor:pointer;">我已知晓，展示答案</button>
+          </div>
+          <pre id="ans-code-${L.id}" style="display:none">${escapeHtml(L.answer)}</pre>
+        </div>
+      </details>
+    </div>
+  `;
+}
+
+function bindQuEvents(L) {
+  const ta = document.getElementById('sql-' + L.id);
+  if (!ta) return;
+  // Tab 缩进
+  ta.addEventListener('keydown', function(e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const s = this.selectionStart, en = this.selectionEnd;
+      this.value = this.value.substring(0, s) + '  ' + this.value.substring(en);
+      this.selectionStart = this.selectionEnd = s + 2;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      runQu(L.id);
+    }
+  });
+}
+
+function difficultyLabel(d) {
+  return { easy: '简单', medium: '中等', hard: '困难' }[d] || d;
+}
+
+// ============ 每题的运行/对答/清空 ============
+function getSQL(qid) {
+  return document.getElementById('sql-' + qid).value.trim();
+}
+
+function runQu(qid) {
+  const sql = getSQL(qid);
+  if (!sql) { showQuFeedback(qid, 'fail', '请先输入 SQL 语句。'); return; }
+  const box = document.getElementById('result-' + qid);
+  const body = document.getElementById('result-body-' + qid);
+  const title = document.getElementById('result-title-' + qid);
+  const meta = document.getElementById('result-meta-' + qid);
+  hideQuFeedback(qid);
+  box.classList.add('show');
+  try {
+    const t0 = performance.now();
+    const results = db.exec(sql);
+    const dt = (performance.now() - t0).toFixed(1);
+    title.textContent = '✓ 运行成功';
+    if (!results.length) {
+      body.innerHTML = '<div style="padding:16px;color:#6e7781;text-align:center;font-size:13px">✓ 执行成功，无返回结果（可能是 DDL/DML 语句）</div>';
+      meta.textContent = `${dt}ms`;
+    } else {
+      const html = results.map(r => renderResultTable(r.columns, r.values)).join('');
+      body.innerHTML = html;
+      const total = results.reduce((s, r) => s + r.values.length, 0);
+      meta.textContent = `${total} 行 · ${dt}ms`;
+    }
+    // 标记为尝试过
+    if (progress[qid] !== 'passed') {
+      progress[qid] = 'attempted';
+      saveProgress(); renderNav(); updateProgress();
+    }
+  } catch (e) {
+    title.textContent = '✗ 语法错误';
+    meta.textContent = '';
+    body.innerHTML = `<div class="err-msg">${escapeHtml(e.message)}</div>`;
+    showQuFeedback(qid, 'fail', '❌ SQL 报错，请检查语法。');
+  }
+}
+
+function checkQu(qid) {
+  const L = LESSONS.find(x => x.id === qid);
+  const sql = getSQL(qid);
+  if (!sql) { showQuFeedback(qid, 'fail', '请先输入 SQL 语句。'); return; }
+  let userRes, refRes;
+  try { userRes = db.exec(sql); }
+  catch (e) { showQuFeedback(qid, 'fail', '❌ 你的 SQL 报错：' + escapeHtml(e.message)); return; }
+  try { refRes = db.exec(L.answer); }
+  catch (e) { showQuFeedback(qid, 'fail', '⚠️ 参考答案执行失败：' + escapeHtml(e.message)); return; }
+
+  // 也顺便显示运行结果
+  const box = document.getElementById('result-' + qid);
+  const body = document.getElementById('result-body-' + qid);
+  const title = document.getElementById('result-title-' + qid);
+  const meta = document.getElementById('result-meta-' + qid);
+  box.classList.add('show');
+  if (userRes.length) {
+    body.innerHTML = renderResultTable(userRes[0].columns, userRes[0].values);
+    title.textContent = '你的结果';
+    meta.textContent = `${userRes[0].values.length} 行`;
+  }
+
+  const cmp = compareResults(userRes, refRes, L.strictOrder);
+  if (cmp.pass) {
+    showQuFeedback(qid, 'pass', `✅ <b>通过！</b> ${cmp.msg}`);
+    progress[qid] = 'passed';
+    saveProgress(); renderNav(); updateProgress();
+    // 卡片头的状态图标更新
+    const iconEl = document.querySelector(`#qu-${qid} h2 > span:last-child`);
+    if (iconEl) iconEl.textContent = '✅';
+  } else {
+    showQuFeedback(qid, 'fail', `❌ <b>未通过。</b> ${cmp.msg}`);
+    if (progress[qid] !== 'passed') {
+      progress[qid] = 'attempted';
+      saveProgress(); renderNav(); updateProgress();
+    }
+  }
+}
+
+function clearQu(qid) {
+  document.getElementById('sql-' + qid).value = '';
+  hideQuFeedback(qid);
+  document.getElementById('result-' + qid).classList.remove('show');
+}
+
+function resetStarter(qid) {
+  const L = LESSONS.find(x => x.id === qid);
+  document.getElementById('sql-' + qid).value = L.starter;
+  hideQuFeedback(qid);
+}
+
+function showQuFeedback(qid, cls, msg) {
+  const el = document.getElementById('feedback-' + qid);
+  el.className = 'feedback show ' + cls;
+  el.innerHTML = msg;
+}
+function hideQuFeedback(qid) {
+  document.getElementById('feedback-' + qid).className = 'feedback';
+}
+
+// ============ 结果表渲染 ============
+function renderResultTable(columns, values, maxRows) {
+  const rows = maxRows ? values.slice(0, maxRows) : values;
+  const more = maxRows && values.length > maxRows ? `<div style="padding:6px;color:#8b949e;font-size:11px;text-align:center;">…共 ${values.length} 行，仅显示前 ${maxRows} 行</div>` : '';
+  let html = '<table class="result"><thead><tr>';
+  columns.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
+  html += '</tr></thead><tbody>';
+  rows.forEach(row => {
+    html += '<tr>';
+    row.forEach(v => {
+      html += v === null ? '<td class="null">NULL</td>' : `<td>${escapeHtml(String(v))}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>' + more;
+  return html;
+}
+
+// ============ 比较 ============
+function compareResults(userRes, refRes, strictOrder) {
+  if (!userRes.length && !refRes.length) return { pass: true, msg: '双方均无返回。' };
+  if (!userRes.length) return { pass: false, msg: '你的 SQL 没有返回结果集。' };
+  if (!refRes.length) return { pass: false, msg: '参考答案无返回，但你的有。' };
+  const u = userRes[0], r = refRes[0];
+  if (u.columns.length !== r.columns.length) return { pass: false, msg: `列数不一致：你 ${u.columns.length} 列，期望 ${r.columns.length} 列。` };
+  if (u.values.length !== r.values.length) return { pass: false, msg: `行数不一致：你 ${u.values.length} 行，期望 ${r.values.length} 行。` };
+  const uv = strictOrder ? u.values : sortRows(u.values);
+  const rv = strictOrder ? r.values : sortRows(r.values);
+  for (let i = 0; i < uv.length; i++) {
+    for (let j = 0; j < uv[i].length; j++) {
+      const a = uv[i][j], b = rv[i][j];
+      if (typeof a === 'number' && typeof b === 'number') {
+        if (Math.abs(a - b) > 0.001) return { pass: false, msg: `第 ${i+1} 行第 ${j+1} 列：你=${a}，期望=${b}。` };
+      } else if (String(a ?? '') !== String(b ?? '')) {
+        const ordNote = strictOrder ? '（本题要求严格按 ORDER BY 排序）' : '';
+        return { pass: false, msg: `第 ${i+1} 行第 ${j+1} 列${ordNote}：你="${a}"，期望="${b}"。` };
+      }
+    }
+  }
+  return { pass: true, msg: `列数 ${u.columns.length}，行数 ${u.values.length}，全部匹配。` };
+}
+
+function sortRows(rows) {
+  return rows.slice().sort((a, b) => {
+    for (let i = 0; i < a.length; i++) {
+      const av = String(a[i] ?? ''), bv = String(b[i] ?? '');
+      if (av < bv) return -1;
+      if (av > bv) return 1;
+    }
+    return 0;
+  });
+}
+
+// ============ 进度 ============
+function saveProgress() { localStorage.setItem('sqlplay_progress_v3', JSON.stringify(progress)); }
+function updateProgress() {
+  const passed = Object.values(progress).filter(v => v === 'passed').length;
+  document.getElementById('progress-text').textContent = `进度 ${passed} / ${LESSONS.length}`;
+  document.getElementById('progress-bar-inner').style.width = (passed / LESSONS.length * 100) + '%';
+}
+function resetProgress() {
+  if (!confirm('确定清除所有进度？（数据库不受影响）')) return;
+  progress = {}; saveProgress(); renderNav(); updateProgress();
+  renderMain(currentGroup); // 刷新卡片状态图标
+}
+
+// ============ 工具 ============
+function showNextHint(qid, total) {
+  const shownEl = document.getElementById('hint-shown-' + qid);
+  if (!shownEl) return;
+  let shown = parseInt(shownEl.textContent);
+  if (shown < total) {
+    const nextItem = document.getElementById(`hint-item-${qid}-${shown}`);
+    if (nextItem) nextItem.style.display = '';
+    shown++;
+    shownEl.textContent = shown;
+    if (shown >= total) {
+      const btn = document.getElementById('hint-more-' + qid);
+      if (btn) btn.style.display = 'none';
+    }
+  }
+}
+
+function revealAnswer(qid) {
+  const warn = document.getElementById('ans-warn-' + qid);
+  const code = document.getElementById('ans-code-' + qid);
+  if (warn) warn.style.display = 'none';
+  if (code) code.style.display = '';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+init();
+</script>
+</body>
+</html>
