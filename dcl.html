@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL 练习场 · DCL 权限控制 · v0.8</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f6f8fa;
+    color: #24292f;
+    font-size: 14px;
+  }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ============ Header ============ */
+  header {
+    background: linear-gradient(90deg, #0969da 0%, #218bff 100%);
+    color: white;
+    padding: 10px 24px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: 48px;
+  }
+  header h1 { margin: 0; font-size: 17px; font-weight: 600; }
+  header .status { font-size: 13px; opacity: 0.95; }
+  #status-badge.loading { color: #fff9c4; }
+  #status-badge.ready { color: #b8f5c8; }
+  #status-badge.error { color: #ffcdd2; }
+
+  /* ============ Top Nav ============ */
+  nav.topnav {
+    background: #ffffff;
+    border-bottom: 1px solid #d0d7de;
+    padding: 0 24px;
+    display: flex;
+    gap: 0;
+    position: sticky;
+    top: 48px;
+    z-index: 99;
+    height: 44px;
+    align-items: stretch;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  nav.topnav a {
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    font-size: 14px;
+    color: #57606a;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    font-weight: 500;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  nav.topnav a:hover:not(.disabled):not(.active) { color: #0969da; text-decoration: none; }
+  nav.topnav a.active {
+    color: #0969da;
+    border-bottom-color: #0969da;
+    font-weight: 600;
+  }
+  nav.topnav a.disabled {
+    color: #b1bac4;
+    cursor: not-allowed;
+  }
+  nav.topnav a.disabled:hover { text-decoration: none; }
+
+  /* ============ Layout ============ */
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: calc(100vh - 92px);
+  }
+
+  /* ============ Sidebar ============ */
+  aside {
+    background: #ffffff;
+    border-right: 1px solid #d0d7de;
+    padding: 12px 0;
+    position: sticky;
+    top: 92px;
+    height: calc(100vh - 92px);
+    overflow-y: auto;
+  }
+  .progress-bar {
+    padding: 8px 16px 12px;
+    font-size: 11px;
+    color: #57606a;
+    border-bottom: 1px solid #eaecef;
+    margin-bottom: 8px;
+  }
+  .progress-fill {
+    height: 4px;
+    background: #eaecef;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .progress-fill > div {
+    height: 100%;
+    background: linear-gradient(90deg, #0969da, #54aeff);
+    transition: width 0.3s;
+  }
+  .lesson-group {
+    padding: 8px 16px 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #57606a;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  .lesson-group:hover { color: #0969da; }
+  .lesson-group.active { color: #0969da; }
+  .lesson-item {
+    padding: 5px 20px 5px 32px;
+    font-size: 13px;
+    color: #24292f;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.4;
+  }
+  .lesson-item:hover { background: #f6f8fa; }
+  .lesson-item .lesson-num { color: #8b949e; font-size: 11px; font-family: monospace; min-width: 26px; }
+  .lesson-item .title-text { flex: 1; }
+  .lesson-item .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #d0d7de; flex-shrink: 0;
+  }
+  .lesson-item.passed .status-dot { background: #2da44e; }
+  .lesson-item.attempted .status-dot { background: #fb8500; }
+  .tool-item {
+    padding: 8px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #57606a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tool-item:hover { background: #f6f8fa; color: #24292f; }
+
+  /* ============ Main content ============ */
+  main {
+    padding: 24px 40px 80px;
+    max-width: 960px;
+    width: 100%;
+  }
+  .group-header {
+    margin-bottom: 20px;
+  }
+  .group-header h1 {
+    font-size: 26px;
+    margin: 0 0 8px;
+    font-weight: 700;
+    color: #24292f;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #0969da;
+    display: inline-block;
+  }
+  .group-header .subtitle {
+    color: #57606a;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ============ 顶部警示 Banner（DCL 特有）============ */
+  .sim-banner {
+    background: linear-gradient(90deg, #fff8c5 0%, #fff8e1 100%);
+    border: 1px solid #eac54f;
+    border-left: 4px solid #d4a72c;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #7d4e00;
+    margin-bottom: 20px;
+    line-height: 1.7;
+  }
+  .sim-banner b { color: #5c3d00; }
+
+  /* ============ 权限矩阵 UI ============ */
+  .state-preview {
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .state-preview-header {
+    background: #ddf4ff;
+    padding: 8px 14px;
+    font-size: 13px;
+    color: #24292f;
+    border-bottom: 1px solid #d0d7de;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .state-preview-body { padding: 12px 16px; }
+  table.perm-matrix {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+  }
+  table.perm-matrix th, table.perm-matrix td {
+    padding: 8px 12px;
+    border: 1px solid #d0d7de;
+    text-align: center;
+    vertical-align: middle;
+  }
+  table.perm-matrix th {
+    background: #f6f8fa;
+    font-weight: 600;
+    color: #24292f;
+    font-family: -apple-system, "PingFang SC", sans-serif;
+  }
+  table.perm-matrix td.user-cell {
+    text-align: left;
+    background: #fafbfc;
+    font-weight: 600;
+    color: #24292f;
+    font-family: -apple-system, "PingFang SC", sans-serif;
+  }
+  table.perm-matrix td.perm-empty {
+    color: #b1bac4;
+    background: #fafbfc;
+  }
+  table.perm-matrix td.perm-cell {
+    background: #dafbe1;
+    color: #116329;
+    font-weight: 600;
+  }
+  .perm-legend {
+    margin-top: 10px;
+    font-size: 11px;
+    color: #57606a;
+    line-height: 1.7;
+    padding: 6px 10px;
+    background: #f6f8fa;
+    border-radius: 4px;
+    border-left: 3px solid #0969da;
+  }
+  .role-card {
+    background: #ddf4ff;
+    border: 1px solid #d8b9ff;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 8px 0;
+    font-size: 13px;
+  }
+  .role-card b { color: #0969da; }
+  .role-card .role-perms { color: #24292f; font-family: monospace; font-size: 12px; margin-top: 4px; }
+  .role-card .role-users { color: #57606a; font-size: 12px; margin-top: 4px; }
+
+  /* ============ 三张业务表数据（折叠）============ */
+  .biz-preview details { border: 1px solid #d0d7de; border-radius: 6px; overflow: hidden; margin-top: 8px; }
+  .biz-preview summary { padding: 6px 12px; background: #fafbfc; font-size: 12px; color: #57606a; cursor: pointer; user-select: none; }
+  .biz-preview summary:hover { background: #f6f8fa; }
+  .biz-preview .biz-tabs { display: flex; gap: 4px; padding: 8px 12px; background: #f6f8fa; border-top: 1px solid #eaecef; }
+  .biz-preview .biz-tab {
+    padding: 3px 10px;
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #24292f;
+    font-family: monospace;
+  }
+  .biz-preview .biz-tab.active { background: #0969da; color: white; border-color: #0860c8; }
+  .biz-preview .biz-body { padding: 0; overflow-x: auto; max-height: 220px; overflow-y: auto; }
+  .biz-preview .biz-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+  }
+  .biz-preview .biz-body th, .biz-preview .biz-body td {
+    padding: 5px 10px;
+    border-bottom: 1px solid #eaecef;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .biz-preview .biz-body th { background: #f6f8fa; font-weight: 600; color: #24292f; position: sticky; top: 0; }
+  .biz-preview .biz-body td.r { text-align: right; }
+
+  /* ============ Problem card ============ */
+  .qu {
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    scroll-margin-top: 60px;
+  }
+  .qu h2 {
+    margin: 0 0 14px;
+    font-size: 19px;
+    font-weight: 600;
+    color: #24292f;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eaecef;
+  }
+  .qu h2 .qid {
+    font-family: monospace;
+    color: #0969da;
+    font-size: 15px;
+    background: #ddf4ff;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+  }
+  .badge.easy { background: #2da44e; }
+  .badge.medium { background: #fb8500; }
+  .badge.hard { background: #cf222e; }
+
+  .qu .intro {
+    color: #24292f;
+    line-height: 1.7;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+  .qu .intro b { color: #0550ae; font-weight: 700; }
+  .qu .imper {
+    background: #ddf4ff;
+    padding: 10px 14px;
+    border-left: 3px solid #0969da;
+    border-radius: 4px;
+    margin-bottom: 14px;
+    color: #4c2889;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+  .qu .imper b { color: #3b1f6b; }
+  .qu .note {
+    background: #fff8c5;
+    padding: 6px 10px;
+    border-left: 3px solid #d4a72c;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #7d4e00;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .qu code {
+    background: #eff1f3;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 12px;
+    color: #cf222e;
+  }
+
+  .editor-wrap {
+    position: relative;
+    margin-bottom: 10px;
+  }
+  .editor-wrap textarea {
+    width: 100%;
+    min-height: 100px;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+    font-size: 13px;
+    padding: 10px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    resize: vertical;
+    background: #ffffff;
+    line-height: 1.5;
+    color: #24292f;
+  }
+  .editor-wrap textarea:focus { outline: none; border-color: #0969da; box-shadow: 0 0 0 3px rgba(9,105,218,0.15); }
+  .editor-wrap .reset-starter {
+    position: absolute;
+    right: 8px;
+    top: 6px;
+    background: rgba(246,248,250,0.9);
+    border: 1px solid #d0d7de;
+    padding: 2px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #57606a;
+  }
+  .editor-wrap .reset-starter:hover { color: #24292f; background: white; }
+
+  .qu-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  button {
+    padding: 5px 12px;
+    border: 1px solid #d0d7de;
+    background: #f6f8fa;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #24292f;
+    transition: all 0.15s;
+  }
+  button:hover:not(:disabled) { background: #eaecef; border-color: #afb8c1; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.primary { background: #2da44e; color: white; border-color: #2c974b; }
+  button.primary:hover:not(:disabled) { background: #2c974b; }
+  button.purple { background: #0969da; color: white; border-color: #0860c8; }
+  button.purple:hover:not(:disabled) { background: #0860c8; }
+  button.ghost { background: transparent; font-size: 12px; padding: 4px 10px; color: #57606a; }
+
+  .result-box {
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    overflow: hidden;
+    display: none;
+    margin-bottom: 8px;
+  }
+  .result-box.show { display: block; }
+  .result-box .result-header {
+    padding: 6px 12px;
+    background: #f6f8fa;
+    font-size: 12px;
+    color: #57606a;
+    border-bottom: 1px solid #d0d7de;
+    display: flex;
+    justify-content: space-between;
+  }
+  .result-box .result-body {
+    max-height: 400px;
+    overflow: auto;
+    padding: 0;
+  }
+  .err-msg {
+    padding: 10px 14px;
+    color: #cf222e;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    background: #ffebe9;
+  }
+
+  .feedback {
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    display: none;
+    margin-bottom: 8px;
+  }
+  .feedback.show { display: block; }
+  .feedback.pass { background: #dafbe1; color: #116329; border: 1px solid #4ac26b; }
+  .feedback.fail { background: #ffebe9; color: #82071e; border: 1px solid #ffa198; }
+  .feedback.info { background: #ddf4ff; color: #0550ae; border: 1px solid #54aeff; }
+
+  details.ans-block {
+    margin-top: 8px;
+    background: #f6f8fa;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  details.ans-block summary { cursor: pointer; color: #0969da; font-weight: 600; }
+  details.ans-block pre {
+    background: white;
+    padding: 10px 12px;
+    border-radius: 4px;
+    border: 1px solid #eaecef;
+    margin: 8px 0 0;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: #24292f;
+  }
+  details.hint-block {
+    margin-top: 8px;
+    background: #fff8f0;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    border: 1px solid #ffdfb5;
+  }
+  details.hint-block summary { cursor: pointer; color: #953800; font-weight: 600; }
+  details.hint-block > div { padding-top: 8px; line-height: 1.7; }
+
+  kbd {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: monospace;
+    font-size: 11px;
+    box-shadow: inset 0 -1px 0 #d0d7de;
+    color: #24292f;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🔐 SQL 练习场 · DCL 权限控制 <span style="opacity:0.7;font-size:12px;font-weight:400;">v0.8 · 上海电力大学·数据库原理及应用</span></h1>
+  <div class="status">状态：<span id="status-badge" class="loading">正在加载…</span></div>
+</header>
+
+<nav class="topnav">
+  <a href="index.html">📖 查询练习 <span style="opacity:0.6;font-size:12px;margin-left:2px">50题</span></a>
+  <a href="ddl.html">🏗️ DDL 建表 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+  <a href="dml.html">📝 DML 数据操作 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+  <a href="dcl.html" class="active">🔐 DCL 权限控制 <span style="opacity:0.7;font-size:12px;margin-left:2px">15题</span></a>
+</nav>
+
+<div class="layout">
+  <aside>
+    <div class="progress-bar">
+      <span id="progress-text">进度 0 / 15</span>
+      <div class="progress-fill"><div id="progress-bar-inner" style="width:0%"></div></div>
+    </div>
+    <div id="nav-list"></div>
+    <div class="lesson-group" style="margin-top:12px; cursor:default">🛠️ 工具</div>
+    <div class="tool-item" onclick="resetState()" title="清除所有 GRANT/REVOKE 操作，用户和权限恢复到初始状态（4 用户 + 4 条初始权限）">↺ 重置虚拟状态</div>
+    <div class="tool-item" onclick="resetProgress()" title="清除已通过/尝试过的题目记录">🧹 清除进度</div>
+  </aside>
+
+  <main id="main-content">
+    <!-- 内容动态渲染 -->
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.js"></script>
+<script>
+// ============ 数据库初始化 SQL（三张业务表 + 数据，仅用于顶部预览 · DCL 授权对象就是这些表） ============
+// 教学场景说明：
+//   - v0.8 DCL 页面不真跑 GRANT/REVOKE（SQLite 不支持），走前端 VIRTUAL_STATE 模拟
+//   - 但保留 employee/department/project 三张表用于顶部业务数据预览，让学生记得授权对象是什么
+const INIT_SQL = `
+DROP TABLE IF EXISTS employee;
+DROP TABLE IF EXISTS department;
+DROP TABLE IF EXISTS project;
+
+CREATE TABLE department (
+  department_id INT PRIMARY KEY,
+  department_name VARCHAR(50)
+);
+
+CREATE TABLE employee (
+  employee_id INT PRIMARY KEY,
+  name VARCHAR(30),
+  gender CHAR(1),
+  birth_date DATE,
+  salary DECIMAL(10,2),
+  department_id INT
+);
+
+CREATE TABLE project (
+  project_id INT PRIMARY KEY,
+  project_name VARCHAR(50),
+  budget DECIMAL(12,2)
+);
+
+INSERT INTO department VALUES
+  (1, '技术部'),
+  (2, '销售部'),
+  (3, '市场部'),
+  (4, '人力资源部'),
+  (5, '财务部');
+
+INSERT INTO employee VALUES
+  (100, '张伟', 'M', '1990-05-12', 15000, 1),
+  (101, '李娜', 'F', '1988-08-23', 18500, 1),
+  (102, '王强', 'M', '1985-03-15', 22000, 1),
+  (103, '赵敏', 'F', '1992-11-08', 12000, 2),
+  (104, '陈磊', 'M', '1987-07-22', 16000, 2),
+  (105, '刘洋', 'M', '1995-02-14',  8500, 2),
+  (106, '孙丽', 'F', '1991-09-30', 13000, 3),
+  (107, '周涛', 'M', '1989-12-05', 14500, 3),
+  (108, '吴敏', 'F', '1993-06-18', 11000, 4),
+  (109, '郑辉', 'M', '1986-04-27', 20000, 4),
+  (110, '徐芳', 'F', '1994-10-11',  9800, 5),
+  (111, '朱强', 'M', '1990-01-19', 17500, 5);
+
+INSERT INTO project VALUES
+  (1001, '电商平台重构', 500000),
+  (1002, '数据中台建设', 800000),
+  (1003, '新品发布会', 200000),
+  (1004, '客户满意度调研', 150000),
+  (1005, '年度审计', 300000),
+  (1006, '员工培训体系', 100000);
+`;
+
+// ============ VIRTUAL_STATE 初态 ============
+const INITIAL_STATE = {
+  users: {
+    'dba_admin':  { exists: true, password: 'admin@dba' },
+    'sales_lead': { exists: true, password: 'sales@2026' },
+    'analyst':    { exists: true, password: 'an@2026' },
+    'guest':      { exists: true, password: 'guest' }
+    // hr_manager 初态不存在
+  },
+  grants: [
+    { user: 'sales_lead', obj: 'project',  priv: 'SELECT', with_grant: false, columns: null },
+    { user: 'sales_lead', obj: 'project',  priv: 'INSERT', with_grant: false, columns: null },
+    { user: 'sales_lead', obj: 'project',  priv: 'UPDATE', with_grant: false, columns: null },
+    { user: 'analyst',    obj: 'employee', priv: 'SELECT', with_grant: false, columns: ['name', 'salary'] }
+  ],
+  roles: {}
+};
+
+function cloneState(s) { return JSON.parse(JSON.stringify(s)); }
+
+// ============ DCL Parser（约 150 行）============
+const PRIV_NAMES = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'REFERENCES', 'EXECUTE', 'ALTER', 'CREATE', 'DROP', 'INDEX'];
+
+function stripQuotes(s) {
+  if (s == null) return s;
+  return String(s).replace(/^\s*['"`]|['"`]\s*$/g, '').trim();
+}
+
+function parsePrivList(blob) {
+  const raw = blob.trim();
+  if (/^ALL(\s+PRIVILEGES)?$/i.test(raw)) return { privs: ['ALL'], columns: null };
+  const m = raw.match(/^(SELECT|INSERT|UPDATE|DELETE|REFERENCES)\s*\(\s*([^)]+?)\s*\)$/i);
+  if (m) {
+    const priv = m[1].toUpperCase();
+    const cols = m[2].split(',').map(x => stripQuotes(x)).filter(Boolean);
+    if (!cols.length) return null;
+    return { privs: [priv], columns: cols };
+  }
+  const parts = raw.split(',').map(x => x.trim().toUpperCase());
+  if (parts.length && parts.every(p => PRIV_NAMES.includes(p))) return { privs: parts, columns: null };
+  return null;
+}
+
+function parseTarget(raw) {
+  const s = raw.trim().replace(/@\s*['"`]?[\w%.\-]+['"`]?$/, '');
+  return stripQuotes(s);
+}
+
+function parseDCL(sql) {
+  const s = sql.trim().replace(/;\s*$/, '').replace(/\s+/g, ' ').trim();
+  if (!s) return null;
+
+  let m;
+  m = s.match(/^CREATE\s+ROLE\s+['"`]?([\w\-]+)['"`]?$/i);
+  if (m) return { type: 'CREATE_ROLE', role: m[1] };
+
+  m = s.match(/^CREATE\s+USER\s+((?:['"`][^'"`]+['"`]|[\w\-]+)(?:@['"`]?[\w%.\-]+['"`]?)?)\s+IDENTIFIED\s+BY\s+['"`]([^'"`]*)['"`]$/i);
+  if (m) return { type: 'CREATE_USER', user: parseTarget(m[1]), password: m[2] };
+
+  m = s.match(/^CREATE\s+USER\s+((?:['"`][^'"`]+['"`]|[\w\-]+))\s+PASSWORD\s+['"`]([^'"`]*)['"`]$/i);
+  if (m) return { type: 'CREATE_USER', user: parseTarget(m[1]), password: m[2] };
+
+  m = s.match(/^DROP\s+USER\s+(?:IF\s+EXISTS\s+)?((?:['"`][^'"`]+['"`]|[\w\-]+)(?:@['"`]?[\w%.\-]+['"`]?)?)$/i);
+  if (m) return { type: 'DROP_USER', user: parseTarget(m[1]) };
+
+  m = s.match(/^ALTER\s+USER\s+((?:['"`][^'"`]+['"`]|[\w\-]+)(?:@['"`]?[\w%.\-]+['"`]?)?)\s+IDENTIFIED\s+BY\s+['"`]([^'"`]*)['"`]$/i);
+  if (m) return { type: 'ALTER_USER', user: parseTarget(m[1]), password: m[2] };
+
+  m = s.match(/^GRANT\s+(.+?)\s+ON\s+([\w\.]+)\s+TO\s+((?:['"`][^'"`]+['"`]|[\w\-]+)(?:@['"`]?[\w%.\-]+['"`]?)?)(\s+WITH\s+GRANT\s+OPTION)?$/i);
+  if (m) {
+    const privParsed = parsePrivList(m[1].trim());
+    if (!privParsed) return null;
+    return {
+      type: 'GRANT_PRIV',
+      privs: privParsed.privs,
+      obj: m[2].split('.').pop(),
+      target: parseTarget(m[3]),
+      columns: privParsed.columns,
+      withGrant: !!m[4]
+    };
+  }
+
+  m = s.match(/^GRANT\s+((?:['"`][^'"`]+['"`]|[\w\-]+))\s+TO\s+((?:['"`][^'"`]+['"`]|[\w\-]+)(?:@['"`]?[\w%.\-]+['"`]?)?)$/i);
+  if (m) return { type: 'GRANT_ROLE', role: parseTarget(m[1]), target: parseTarget(m[2]) };
+
+  m = s.match(/^REVOKE\s+(?:GRANT\s+OPTION\s+FOR\s+)?(.+?)\s+ON\s+([\w\.]+)\s+FROM\s+((?:['"`][^'"`]+['"`]|[\w\-]+)(?:@['"`]?[\w%.\-]+['"`]?)?)$/i);
+  if (m) {
+    const privParsed = parsePrivList(m[1].trim());
+    if (!privParsed) return null;
+    return {
+      type: 'REVOKE_PRIV',
+      privs: privParsed.privs,
+      obj: m[2].split('.').pop(),
+      target: parseTarget(m[3]),
+      columns: privParsed.columns
+    };
+  }
+
+  m = s.match(/^REVOKE\s+((?:['"`][^'"`]+['"`]|[\w\-]+))\s+FROM\s+((?:['"`][^'"`]+['"`]|[\w\-]+)(?:@['"`]?[\w%.\-]+['"`]?)?)$/i);
+  if (m) return { type: 'REVOKE_ROLE', role: parseTarget(m[1]), target: parseTarget(m[2]) };
+
+  return null;
+}
+
+function parseAllDCL(sqlBlob) {
+  const stmts = sqlBlob.split(';').map(x => x.trim()).filter(Boolean);
+  const asts = [];
+  const failures = [];
+  for (const stmt of stmts) {
+    if (/^--/.test(stmt)) continue;
+    const cleaned = stmt.replace(/--.*$/gm, '').trim();
+    if (!cleaned) continue;
+    const ast = parseDCL(cleaned);
+    if (ast) asts.push(ast);
+    else failures.push({ raw: stmt, reason: 'unrecognized DCL syntax' });
+  }
+  return { asts, failures };
+}
+
+// ============ State 引擎 ============
+function applyAst(state, ast) {
+  if (!ast) return { ok: false, msg: 'null ast' };
+  switch (ast.type) {
+    case 'CREATE_USER':
+      state.users[ast.user] = { exists: true, password: ast.password };
+      return { ok: true };
+    case 'DROP_USER':
+      delete state.users[ast.user];
+      state.grants = state.grants.filter(g => g.user !== ast.user);
+      Object.keys(state.roles).forEach(rk => {
+        state.roles[rk].granted_to_users = (state.roles[rk].granted_to_users || []).filter(u => u !== ast.user);
+      });
+      return { ok: true };
+    case 'ALTER_USER':
+      if (state.users[ast.user]) state.users[ast.user].password = ast.password;
+      else state.users[ast.user] = { exists: true, password: ast.password };
+      return { ok: true };
+    case 'CREATE_ROLE':
+      if (!state.roles[ast.role]) state.roles[ast.role] = { privileges: [], granted_to_users: [] };
+      return { ok: true };
+    case 'GRANT_PRIV': {
+      const isRole = !!state.roles[ast.target];
+      if (isRole) {
+        const arr = state.roles[ast.target].privileges;
+        if (ast.privs.includes('ALL')) {
+          if (!arr.some(p => p.obj === ast.obj && p.priv === 'ALL')) {
+            arr.push({ obj: ast.obj, priv: 'ALL', columns: null, with_grant: ast.withGrant });
+          }
+        } else {
+          ast.privs.forEach(p => {
+            if (ast.columns) {
+              const existing = arr.find(x => x.obj === ast.obj && x.priv === p && x.columns);
+              if (existing) {
+                ast.columns.forEach(c => { if (!existing.columns.includes(c)) existing.columns.push(c); });
+              } else {
+                arr.push({ obj: ast.obj, priv: p, columns: [...ast.columns], with_grant: ast.withGrant });
+              }
+            } else {
+              const existing = arr.find(x => x.obj === ast.obj && x.priv === p && !x.columns);
+              if (!existing) arr.push({ obj: ast.obj, priv: p, columns: null, with_grant: ast.withGrant });
+              else if (ast.withGrant && !existing.with_grant) existing.with_grant = true;
+            }
+          });
+        }
+      } else {
+        if (ast.privs.includes('ALL')) {
+          const existing = state.grants.find(g => g.user === ast.target && g.obj === ast.obj && g.priv === 'ALL');
+          if (!existing) state.grants.push({ user: ast.target, obj: ast.obj, priv: 'ALL', with_grant: ast.withGrant, columns: null });
+          else if (ast.withGrant && !existing.with_grant) existing.with_grant = true;
+        } else {
+          ast.privs.forEach(p => {
+            if (ast.columns) {
+              const existing = state.grants.find(g => g.user === ast.target && g.obj === ast.obj && g.priv === p && g.columns);
+              if (existing) {
+                ast.columns.forEach(c => { if (!existing.columns.includes(c)) existing.columns.push(c); });
+              } else {
+                state.grants.push({ user: ast.target, obj: ast.obj, priv: p, with_grant: ast.withGrant, columns: [...ast.columns] });
+              }
+            } else {
+              const existing = state.grants.find(g => g.user === ast.target && g.obj === ast.obj && g.priv === p && !g.columns);
+              if (!existing) state.grants.push({ user: ast.target, obj: ast.obj, priv: p, with_grant: ast.withGrant, columns: null });
+              else if (ast.withGrant && !existing.with_grant) existing.with_grant = true;
+            }
+          });
+        }
+      }
+      return { ok: true };
+    }
+    case 'GRANT_ROLE':
+      if (!state.roles[ast.role]) return { ok: false, msg: `角色 ${ast.role} 不存在` };
+      state.roles[ast.role].granted_to_users = state.roles[ast.role].granted_to_users || [];
+      if (!state.roles[ast.role].granted_to_users.includes(ast.target)) {
+        state.roles[ast.role].granted_to_users.push(ast.target);
+      }
+      return { ok: true };
+    case 'REVOKE_PRIV': {
+      const isRole = !!state.roles[ast.target];
+      if (isRole) {
+        const arr = state.roles[ast.target].privileges;
+        if (ast.privs.includes('ALL')) {
+          state.roles[ast.target].privileges = arr.filter(p => p.obj !== ast.obj);
+        } else if (ast.columns) {
+          state.roles[ast.target].privileges = arr.reduce((acc, p) => {
+            if (p.obj === ast.obj && ast.privs.includes(p.priv) && p.columns) {
+              const remaining = p.columns.filter(c => !ast.columns.includes(c));
+              if (remaining.length) acc.push({ ...p, columns: remaining });
+            } else acc.push(p);
+            return acc;
+          }, []);
+        } else {
+          state.roles[ast.target].privileges = arr.filter(p => !(p.obj === ast.obj && ast.privs.includes(p.priv) && !p.columns));
+        }
+      } else {
+        if (ast.privs.includes('ALL')) {
+          state.grants = state.grants.filter(g => !(g.user === ast.target && g.obj === ast.obj));
+        } else if (ast.columns) {
+          state.grants = state.grants.reduce((acc, g) => {
+            if (g.user === ast.target && g.obj === ast.obj && ast.privs.includes(g.priv) && g.columns) {
+              const remaining = g.columns.filter(c => !ast.columns.includes(c));
+              if (remaining.length) acc.push({ ...g, columns: remaining });
+            } else acc.push(g);
+            return acc;
+          }, []);
+        } else {
+          state.grants = state.grants.filter(g => !(g.user === ast.target && g.obj === ast.obj && ast.privs.includes(g.priv) && !g.columns));
+        }
+      }
+      return { ok: true };
+    }
+    case 'REVOKE_ROLE':
+      if (state.roles[ast.role]) {
+        state.roles[ast.role].granted_to_users = (state.roles[ast.role].granted_to_users || []).filter(u => u !== ast.target);
+      }
+      return { ok: true };
+  }
+  return { ok: false, msg: 'unhandled: ' + ast.type };
+}
+
+function applyAll(state, asts) {
+  const results = [];
+  for (const a of asts) results.push(applyAst(state, a));
+  return results;
+}
+
+// ============ 状态对比 ============
+function normGrant(g) {
+  const cols = g.columns ? [...g.columns].sort().join(',') : '';
+  return `${g.user}|${g.obj}|${g.priv}|${g.with_grant ? '★' : ''}|${cols}`;
+}
+function normRolePriv(p) {
+  const cols = p.columns ? [...p.columns].sort().join(',') : '';
+  return `${p.obj}|${p.priv}|${p.with_grant ? '★' : ''}|${cols}`;
+}
+
+function stateEquals(a, b) {
+  const uA = Object.keys(a.users).sort();
+  const uB = Object.keys(b.users).sort();
+  if (uA.join(',') !== uB.join(',')) {
+    return { pass: false, msg: `用户集合不一致：你 [${uA.join(', ')}] vs 期望 [${uB.join(', ')}]` };
+  }
+  for (const k of uA) {
+    if (String(a.users[k].password) !== String(b.users[k].password)) {
+      return { pass: false, msg: `用户 ${k} 密码不匹配：你 "${a.users[k].password}" vs 期望 "${b.users[k].password}"` };
+    }
+  }
+  const gA = new Set(a.grants.map(normGrant));
+  const gB = new Set(b.grants.map(normGrant));
+  const extra = [...gA].filter(x => !gB.has(x));
+  const missing = [...gB].filter(x => !gA.has(x));
+  if (extra.length) return { pass: false, msg: `多余的权限记录：${extra.join(' ; ')}` };
+  if (missing.length) return { pass: false, msg: `缺少的权限记录：${missing.join(' ; ')}` };
+  const rA = Object.keys(a.roles).sort();
+  const rB = Object.keys(b.roles).sort();
+  if (rA.join(',') !== rB.join(',')) {
+    return { pass: false, msg: `角色集合不一致：你 [${rA.join(', ')}] vs 期望 [${rB.join(', ')}]` };
+  }
+  for (const r of rA) {
+    const pA = new Set((a.roles[r].privileges || []).map(normRolePriv));
+    const pB = new Set((b.roles[r].privileges || []).map(normRolePriv));
+    const e2 = [...pA].filter(x => !pB.has(x));
+    const m2 = [...pB].filter(x => !pA.has(x));
+    if (e2.length) return { pass: false, msg: `角色 ${r} 多余权限：${e2.join(' ; ')}` };
+    if (m2.length) return { pass: false, msg: `角色 ${r} 缺少权限：${m2.join(' ; ')}` };
+    const guA = new Set(a.roles[r].granted_to_users || []);
+    const guB = new Set(b.roles[r].granted_to_users || []);
+    const e3 = [...guA].filter(x => !guB.has(x));
+    const m3 = [...guB].filter(x => !guA.has(x));
+    if (e3.length) return { pass: false, msg: `角色 ${r} 多授给用户：${e3.join(', ')}` };
+    if (m3.length) return { pass: false, msg: `角色 ${r} 少授给用户：${m3.join(', ')}` };
+  }
+  return { pass: true, msg: 'state matches' };
+}
+
+// SQL normalize（兜底比对）
+function normalizeSQL(sql) {
+  return sql.replace(/--.*$/gm, '').replace(/['"`]/g, '').replace(/\s+/g, ' ').replace(/\s*;\s*$/g, '').trim().toUpperCase();
+}
+
+// ============ 分组配置 ============
+const GROUPS = [
+  {
+    key: 'user', icon: '👤', title: 'USER 用户管理',
+    subtitle: '本组学习<b>创建 / 修改 / 删除</b>数据库用户。语法要点：<code>CREATE USER \'name\' IDENTIFIED BY \'pwd\'</code>（MySQL 风格）、<code>DROP USER \'name\'</code>、<code>ALTER USER \'name\' IDENTIFIED BY \'newpwd\'</code>。<span style="color:#7d4e00">SQL Server 用 <code>CREATE USER name PASSWORD \'pwd\'</code>，Oracle 用 <code>CREATE USER name IDENTIFIED BY pwd</code>（不加引号也行）。本练习场兼容所有主流方言写法。</span>'
+  },
+  {
+    key: 'grant', icon: '🔓', title: 'GRANT 权限授予',
+    subtitle: 'GRANT 把权限授给用户或角色。核心语法：<code>GRANT priv[,priv] ON obj TO user [WITH GRANT OPTION]</code>。<b>WITH GRANT OPTION</b> 允许被授权者转授给他人；<b>GRANT SELECT (col1,col2)</b> 是字段级授权；<b>GRANT ALL PRIVILEGES</b> 授全权（对象上的所有权限）。'
+  },
+  {
+    key: 'revoke', icon: '🚫', title: 'REVOKE 权限撤销',
+    subtitle: 'REVOKE 是 GRANT 的反操作。语法：<code>REVOKE priv[,priv] ON obj FROM user</code>。字段级撤销 <code>REVOKE SELECT (col) ON t FROM u</code>；撤销全权 <code>REVOKE ALL PRIVILEGES ON obj FROM u</code>。<span style="color:#7d4e00">生产环境要谨慎：撤权也会连带撤销该用户转授给他人的权限（级联撤权）。</span>'
+  },
+  {
+    key: 'role', icon: '🎭', title: 'ROLE 角色管理',
+    subtitle: '<b>角色</b>是权限的容器。用法：<code>CREATE ROLE role_name</code> 创建角色 → <code>GRANT priv ON obj TO role_name</code> 给角色授权限 → <code>GRANT role_name TO user_name</code> 把角色授给用户。用户就自动继承角色的所有权限。<span style="color:#7d4e00">角色是"批量授权"的最佳实践 —— 100 个新销售来了，一句 <code>GRANT sales_role TO ...</code> 就搞定，比逐个 GRANT 快 10 倍。</span>'
+  }
+];
+
+// ============ LESSONS 15 题 ============
+const LESSONS = [
+  // ============================================================
+  // Group 1: USER 用户管理（C01-C04）
+  // ============================================================
+  {
+    id: 'C01', group: 'user', title: '创建新用户 hr_manager', difficulty: 'easy',
+    intro: '<b>CREATE USER \'用户名\' IDENTIFIED BY \'密码\'</b> 是 MySQL/Oracle 的主流写法。执行后，新用户就存在于数据库的用户目录里，但<b>还没有任何权限</b>（连登录都可能被拒），需要后续 GRANT 才能干活。',
+    imper: '创建用户 <code>hr_manager</code>，密码 <code>hr@2026</code>。',
+    starter: `CREATE USER '...' IDENTIFIED BY '...';`,
+    answer: `CREATE USER 'hr_manager' IDENTIFIED BY 'hr@2026';`,
+    hints: [
+      '语法：<code>CREATE USER \'用户名\' IDENTIFIED BY \'密码\';</code>',
+      '用户名和密码<b>都要用引号包起来</b>（单引号 / 双引号 / 反引号皆可）。'
+    ],
+    baseline: []
+  },
+  {
+    id: 'C02', group: 'user', title: '再创建一个 finance_lead', difficulty: 'easy',
+    intro: '熟能生巧 —— 再练一次 CREATE USER，密码这次带特殊字符 <code>#</code>。密码字面量本身用引号包裹后，内部的 <code>#</code> / <code>@</code> / 数字都能正常存。',
+    imper: '创建用户 <code>finance_lead</code>，密码 <code>fin#2026</code>。',
+    starter: `CREATE USER '...' IDENTIFIED BY '...';`,
+    answer: `CREATE USER 'finance_lead' IDENTIFIED BY 'fin#2026';`,
+    hints: [
+      '与 C01 完全相同的语法，只是用户名和密码不同。',
+      '密码里的 <code>#</code> 在单引号包裹下不需要转义。'
+    ],
+    baseline: []
+  },
+  {
+    id: 'C03', group: 'user', title: '修改 hr_manager 的密码', difficulty: 'medium',
+    intro: '<b>ALTER USER \'用户名\' IDENTIFIED BY \'新密码\'</b> 用于改密。<span style="color:#7d4e00">MySQL 5.7.6+ 起统一用 ALTER USER；早期版本用 SET PASSWORD，已不推荐。SQL Server 用 <code>ALTER LOGIN xxx WITH PASSWORD = \'...\'</code>，语法完全不同。</span><div class="note" style="margin-top:6px">📌 <b>本题假设 C01 已完成</b>：hr_manager 用户已存在（初态默认已带上）。</div>',
+    imper: '把 <code>hr_manager</code> 的密码改成 <code>new@hr2026</code>。',
+    starter: `ALTER USER '...' IDENTIFIED BY '...';`,
+    answer: `ALTER USER 'hr_manager' IDENTIFIED BY 'new@hr2026';`,
+    hints: [
+      '语法：<code>ALTER USER \'用户名\' IDENTIFIED BY \'新密码\';</code>',
+      '关键字是 ALTER 不是 UPDATE（DCL 里改元数据的都是 ALTER 系列）。'
+    ],
+    baseline: [`CREATE USER 'hr_manager' IDENTIFIED BY 'hr@2026';`]
+  },
+  {
+    id: 'C04', group: 'user', title: '删除用户 guest', difficulty: 'easy',
+    intro: '<b>DROP USER \'用户名\'</b> 会连带删除该用户的<b>所有权限记录</b>（不用先 REVOKE）。<span style="color:#7d4e00">生产环境删除用户前，最好先审计一下该用户的授权范围（避免误删掉某个正在被业务依赖的账号）。</span>',
+    imper: '删除用户 <code>guest</code>。',
+    starter: `DROP USER '...';`,
+    answer: `DROP USER 'guest';`,
+    hints: [
+      '语法：<code>DROP USER \'用户名\';</code>',
+      '删除后，权限矩阵里 guest 这一行会整行消失。'
+    ],
+    baseline: []
+  },
+
+  // ============================================================
+  // Group 2: GRANT 授权（C05-C09）
+  // ============================================================
+  {
+    id: 'C05', group: 'grant', title: '授予 hr_manager 对 employee 表的 SELECT', difficulty: 'easy',
+    intro: '<b>GRANT SELECT ON 表 TO 用户</b> 是最基础的授权语句 —— 让用户能<b>查</b>某张表。<div class="note" style="margin-top:6px">📌 <b>本题假设 C01 已完成</b>：hr_manager 用户已存在。</div>',
+    imper: '授予 <code>hr_manager</code> 对 <code>employee</code> 表的 <b>SELECT</b> 权限。',
+    starter: `GRANT ... ON ... TO '...';`,
+    answer: `GRANT SELECT ON employee TO 'hr_manager';`,
+    hints: [
+      '语法：<code>GRANT SELECT ON 表名 TO \'用户名\';</code>',
+      '不需要 WITH GRANT OPTION（本题只让 hr_manager 自己查，不允许他转授）。'
+    ],
+    baseline: [`CREATE USER 'hr_manager' IDENTIFIED BY 'hr@2026';`]
+  },
+  {
+    id: 'C06', group: 'grant', title: '给 sales_lead 追加 DELETE 权限', difficulty: 'medium',
+    intro: 'GRANT 是<b>追加</b>操作：初态 <code>sales_lead</code> 已有 project 表的 S/I/U 三个权限，再 GRANT DELETE 就变成 S/I/U/D。<span style="color:#7d4e00">GRANT 不会覆盖已有权限，只会加。</span>',
+    imper: '授予 <code>sales_lead</code> 对 <code>project</code> 表的 <b>DELETE</b> 权限。',
+    starter: `GRANT DELETE ON ... TO '...';`,
+    answer: `GRANT DELETE ON project TO 'sales_lead';`,
+    hints: [
+      '语法与 C05 一样，只是权限从 SELECT 换成 DELETE。',
+      '执行后 sales_lead 对 project 应该拥有 S / I / U / D 四个权限（在权限矩阵里看得到）。'
+    ],
+    baseline: []
+  },
+  {
+    id: 'C07', group: 'grant', title: '授予 dba_admin 对 employee 的 ALL PRIVILEGES', difficulty: 'medium',
+    intro: '<b>ALL PRIVILEGES</b>（或省略成 <code>ALL</code>）表示<b>对象上的所有权限</b>。相当于一次性授出 SELECT / INSERT / UPDATE / DELETE / REFERENCES / 等全套。<span style="color:#7d4e00">通常只给 DBA 或超级管理员账号用，不要随便授。</span>',
+    imper: '授予 <code>dba_admin</code> 对 <code>employee</code> 表的 <b>ALL PRIVILEGES</b>。',
+    starter: `GRANT ALL PRIVILEGES ON ... TO '...';`,
+    answer: `GRANT ALL PRIVILEGES ON employee TO 'dba_admin';`,
+    hints: [
+      '语法：<code>GRANT ALL PRIVILEGES ON 表 TO \'用户\';</code>',
+      '<code>PRIVILEGES</code> 关键字可省略，写成 <code>GRANT ALL ON ...</code> 也行。'
+    ],
+    baseline: []
+  },
+  {
+    id: 'C08', group: 'grant', title: '字段级授权：追加 department_id', difficulty: 'medium',
+    intro: '<b>字段级 SELECT</b> 语法：<code>GRANT SELECT (col1, col2) ON 表 TO 用户</code>。让用户只能查这几列，其他列即使 SELECT * 也会报权限不足。<span style="color:#7d4e00">分析师账号常见做法：只授业务相关字段，敏感字段（工资 / 身份证）另发合规审批。</span><div class="note" style="margin-top:6px">📌 初态 <code>analyst</code> 对 employee 已有字段级 SELECT (name, salary)，本题<b>追加 department_id</b>。执行后 analyst 对 employee 的 SELECT 应含 name, salary, department_id 三个字段。</div>',
+    imper: '授予 <code>analyst</code> 对 <code>employee</code> 表 <b>department_id</b> 字段的 <b>SELECT</b> 权限（字段级）。',
+    starter: `GRANT SELECT (...) ON employee TO '...';`,
+    answer: `GRANT SELECT (department_id) ON employee TO 'analyst';`,
+    hints: [
+      '字段列表用括号包裹，写在权限名后：<code>GRANT SELECT (department_id) ON employee TO \'analyst\';</code>',
+      '字段级 GRANT 会与已有字段级 GRANT 自动合并（不会覆盖原有的 name / salary）。'
+    ],
+    baseline: []
+  },
+  {
+    id: 'C09', group: 'grant', title: 'WITH GRANT OPTION 转授权限', difficulty: 'hard',
+    intro: '<b>WITH GRANT OPTION</b> 允许被授权者<b>再把这个权限转授给他人</b>。适合"总代理→分销商→零售商"三级权限体系。<span style="color:#7d4e00">Oracle 里对象权限用 WITH GRANT OPTION，系统权限用 WITH ADMIN OPTION；MySQL 只有 WITH GRANT OPTION 一种。</span>',
+    imper: '授予 <code>dba_admin</code> 对 <code>department</code> 表的 <b>SELECT</b> 权限，并允许他<b>转授给他人</b>（WITH GRANT OPTION）。',
+    starter: `GRANT SELECT ON ... TO '...' WITH GRANT OPTION;`,
+    answer: `GRANT SELECT ON department TO 'dba_admin' WITH GRANT OPTION;`,
+    hints: [
+      '在标准 GRANT 语句末尾追加 <b>WITH GRANT OPTION</b> 即可。',
+      '权限矩阵里，带 WITH GRANT OPTION 的权限会用 <b>★</b> 标记（如 <code>S★</code>）。'
+    ],
+    baseline: []
+  },
+
+  // ============================================================
+  // Group 3: REVOKE 撤销（C10-C13）
+  // ============================================================
+  {
+    id: 'C10', group: 'revoke', title: '撤销 sales_lead 对 project 的 INSERT', difficulty: 'easy',
+    intro: '<b>REVOKE priv ON obj FROM user</b> 是撤销权限的基本语法。REVOKE 只撤 GRANT 授出的对应权限，其他权限保留。<span style="color:#7d4e00">初态 sales_lead 对 project 有 S/I/U，撤销 I 后剩下 S/U。</span>',
+    imper: '撤销 <code>sales_lead</code> 对 <code>project</code> 表的 <b>INSERT</b> 权限。',
+    starter: `REVOKE INSERT ON ... FROM '...';`,
+    answer: `REVOKE INSERT ON project FROM 'sales_lead';`,
+    hints: [
+      '语法：<code>REVOKE 权限 ON 表 FROM \'用户\';</code>（注意是 FROM 不是 TO）。',
+      '执行后权限矩阵里 sales_lead × project 应显示 S / U（原 S / I / U 少了 I）。'
+    ],
+    baseline: []
+  },
+  {
+    id: 'C11', group: 'revoke', title: '继续撤销 UPDATE', difficulty: 'medium',
+    intro: '一步步收紧权限：<code>sales_lead</code> 再被撤销 UPDATE 后，只剩下 SELECT 一个权限（相当于降级为只读账号）。',
+    imper: '撤销 <code>sales_lead</code> 对 <code>project</code> 表的 <b>UPDATE</b> 权限。',
+    starter: `REVOKE UPDATE ON ... FROM '...';`,
+    answer: `REVOKE UPDATE ON project FROM 'sales_lead';`,
+    hints: [
+      '与 C10 一样的语法，权限换成 UPDATE。',
+      '执行后 sales_lead × project 只剩 S（假设 C10 未执行，则原 S/I/U 变为 S/I）。'
+    ],
+    baseline: []
+  },
+  {
+    id: 'C12', group: 'revoke', title: '字段级 REVOKE：撤销 salary 字段', difficulty: 'medium',
+    intro: '<b>REVOKE SELECT (col) ON 表 FROM 用户</b> 是字段级撤销。只撤指定字段的读权限，其他字段不动。<span style="color:#7d4e00">场景：分析师之前能看工资字段，业务合规要求收回工资查询权限，其他字段（如姓名）仍保留。</span><div class="note" style="margin-top:6px">📌 初态 analyst 对 employee 有字段级 SELECT (name, salary)，本题撤销 salary 后，只剩 SELECT (name)。</div>',
+    imper: '撤销 <code>analyst</code> 对 <code>employee</code> 表 <b>salary</b> 字段的 <b>SELECT</b> 权限。',
+    starter: `REVOKE SELECT (...) ON employee FROM '...';`,
+    answer: `REVOKE SELECT (salary) ON employee FROM 'analyst';`,
+    hints: [
+      '字段名放在权限名后的括号里：<code>REVOKE SELECT (salary) ON employee FROM \'analyst\';</code>',
+      '执行后 analyst × employee 应显示 <code>S(name)</code>（原本 <code>S(name,salary)</code> 去掉 salary）。'
+    ],
+    baseline: []
+  },
+  {
+    id: 'C13', group: 'revoke', title: '撤销 ALL PRIVILEGES', difficulty: 'medium',
+    intro: '<b>REVOKE ALL PRIVILEGES ON 表 FROM 用户</b> 一次性撤销该用户对该对象的所有权限。相当于把这一格清零。<div class="note" style="margin-top:6px">📌 <b>本题假设 C07 已完成</b>：dba_admin 对 employee 已被授予 ALL PRIVILEGES。执行本题的 REVOKE ALL 后，权限矩阵里 dba_admin × employee 应回到空 <code>·</code>。</div>',
+    imper: '撤销 <code>dba_admin</code> 对 <code>employee</code> 表的 <b>ALL PRIVILEGES</b>。',
+    starter: `REVOKE ALL PRIVILEGES ON ... FROM '...';`,
+    answer: `REVOKE ALL PRIVILEGES ON employee FROM 'dba_admin';`,
+    hints: [
+      '语法与 C07 GRANT ALL 完全对称，只是 GRANT → REVOKE，TO → FROM。',
+      '<code>PRIVILEGES</code> 关键字可省略。'
+    ],
+    baseline: [`GRANT ALL PRIVILEGES ON employee TO 'dba_admin';`]
+  },
+
+  // ============================================================
+  // Group 4: ROLE 角色（C14-C15）
+  // ============================================================
+  {
+    id: 'C14', group: 'role', title: '创建角色 sales_role 并授权', difficulty: 'medium',
+    intro: '<b>CREATE ROLE</b> 创建一个空的角色（没有任何权限）。然后用 <code>GRANT priv ON obj TO 角色名</code> 把权限装进角色里。角色本质就是<b>权限的容器</b>。<span style="color:#7d4e00">本题需要写两条语句：第一条 CREATE ROLE，第二条 GRANT 权限给这个角色。两条 SQL 用分号分隔。</span>',
+    imper: '① 创建角色 <code>sales_role</code>；② 授予该角色对 <code>project</code> 表的 <b>SELECT, INSERT</b> 权限（两条 SQL，分号分隔）。',
+    starter: `CREATE ROLE '...';\nGRANT SELECT, INSERT ON ... TO '...';`,
+    answer: `CREATE ROLE 'sales_role';\nGRANT SELECT, INSERT ON project TO 'sales_role';`,
+    hints: [
+      '第一条：<code>CREATE ROLE \'sales_role\';</code>',
+      '第二条：<code>GRANT SELECT, INSERT ON project TO \'sales_role\';</code>（多个权限用逗号分隔）。',
+      'GRANT 权限给角色的语法和给用户完全一样，parser 会通过"target 是不是角色名"来自动区分。'
+    ],
+    baseline: []
+  },
+  {
+    id: 'C15', group: 'role', title: '把角色授予用户', difficulty: 'hard',
+    intro: '<b>GRANT 角色 TO 用户</b> 把角色<b>整体授给</b>某个用户。用户就自动继承角色的所有权限。<span style="color:#7d4e00">语法关键：这条 GRANT <b>没有 ON 子句</b>（parser 靠这点区分"授权限"和"授角色"）。</span><div class="note" style="margin-top:6px">📌 <b>本题假设 C14 已完成</b>：sales_role 角色已存在，且已装有 project.SELECT + project.INSERT 两个权限。</div>',
+    imper: '把角色 <code>sales_role</code> 授予用户 <code>sales_lead</code>。',
+    starter: `GRANT '...' TO '...';`,
+    answer: `GRANT 'sales_role' TO 'sales_lead';`,
+    hints: [
+      '语法：<code>GRANT \'角色名\' TO \'用户名\';</code>（<b>没有 ON 子句</b>，这是"授角色"和"授权限"的区别）。',
+      '执行后，角色卡片里 sales_role 的"已授予用户"列表应包含 sales_lead。'
+    ],
+    baseline: [`CREATE ROLE 'sales_role'; GRANT SELECT, INSERT ON project TO 'sales_role';`]
+  }
+];
+
+// ============ 全局状态 ============
+let SQL, db;
+let currentGroup = GROUPS[0].key;
+let progress = JSON.parse(localStorage.getItem('sqlplay_dcl_progress_v1') || '{}');
+
+// ============ 初始化 ============
+async function init() {
+  try {
+    SQL = await initSqlJs({ locateFile: f => `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}` });
+    resetDBSilent();
+    setStatus('ready', '就绪 · 前端模拟 DCL');
+    renderNav();
+    renderMain(currentGroup);
+    updateProgress();
+  } catch (e) {
+    setStatus('error', '加载失败: ' + e.message);
+    console.error(e);
+  }
+}
+
+function setStatus(cls, text) {
+  const el = document.getElementById('status-badge');
+  el.className = cls;
+  el.textContent = text;
+}
+
+function resetDBSilent() {
+  if (db) db.close();
+  db = new SQL.Database();
+  db.run(INIT_SQL);
+}
+
+// 重置虚拟状态（工具菜单里的按钮）
+function resetState() {
+  if (!confirm('此操作会清除所有 GRANT / REVOKE 操作，用户和权限恢复到初始状态：4 个用户（dba_admin / sales_lead / analyst / guest）+ 4 条初始权限记录。你之前的操作会被撤销（进度记录保留）。确认？')) return;
+  // 虚拟状态本来就没有"当前"这一份（每题独立 clone INITIAL_STATE 计算），
+  // 重置只需要刷新页面重新渲染主界面即可
+  renderMain(currentGroup);
+  alert('✓ 虚拟状态已重置。权限矩阵回到初始 4 用户 + 4 条权限。');
+}
+
+// ============ 侧边栏导航 ============
+function renderNav() {
+  const container = document.getElementById('nav-list');
+  let html = '';
+  GROUPS.forEach(g => {
+    const groupPassed = LESSONS.filter(L => L.group === g.key && progress[L.id] === 'passed').length;
+    const groupTotal = LESSONS.filter(L => L.group === g.key).length;
+    html += `<div class="lesson-group ${g.key === currentGroup ? 'active' : ''}" onclick="selectGroup('${g.key}')">
+      <span>${g.icon}</span>
+      <span>${g.title}</span>
+      <span style="margin-left:auto;font-size:11px;color:#8b949e;font-weight:400;">${groupPassed}/${groupTotal}</span>
+    </div>`;
+    if (g.key === currentGroup) {
+      LESSONS.filter(L => L.group === g.key).forEach(L => {
+        const state = progress[L.id] || 'none';
+        html += `<div class="lesson-item ${state}" onclick="scrollToQu('${L.id}')">
+          <span class="lesson-num">${L.id}</span>
+          <span class="title-text">${L.title}</span>
+          <span class="status-dot"></span>
+        </div>`;
+      });
+    }
+  });
+  container.innerHTML = html;
+}
+
+function selectGroup(key) {
+  currentGroup = key;
+  renderNav();
+  renderMain(key);
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function scrollToQu(id) {
+  const el = document.getElementById('qu-' + id);
+  if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+// ============ 主区渲染 ============
+function renderMain(groupKey) {
+  const g = GROUPS.find(x => x.key === groupKey);
+  const lessons = LESSONS.filter(L => L.group === groupKey);
+  const main = document.getElementById('main-content');
+
+  let html = `
+    <div class="sim-banner">
+      ⚠️ <b>本页 DCL SQL 不真跑在 SQLite（引擎不支持 GRANT / REVOKE / CREATE USER）</b>，走前端模拟：学生 SQL 经 parser 解析后，在虚拟权限状态里生效。真实数据库（MySQL / Oracle / SQL Server / PostgreSQL）里，DCL 会立即写入系统表并生效。教学价值：<b>把"看不见的权限变化"可视化</b>，让你直观理解 GRANT / REVOKE 到底改了什么。
+    </div>
+    <div class="group-header">
+      <h1>${g.icon} ${g.title}</h1>
+      <div class="subtitle">${g.subtitle}</div>
+    </div>
+    ${renderStatePreview(INITIAL_STATE, '📊 初始虚拟状态（4 用户 · 4 条初始权限）', null)}
+  `;
+
+  lessons.forEach(L => {
+    html += renderQu(L);
+  });
+
+  main.innerHTML = html;
+
+  // 绑定每题的事件
+  lessons.forEach(L => bindQuEvents(L));
+  // 顶部初始状态的业务表 tab 绑定
+  bindBizPreviewTabs('preview-init');
+}
+
+// ============ 权限矩阵 UI（DCL 核心）============
+function renderStatePreview(state, headerTitle, containerIdPrefix) {
+  const idPrefix = containerIdPrefix || 'preview-init';
+  const TABLES = ['employee', 'department', 'project'];
+  const users = Object.keys(state.users).sort();
+
+  // 权限矩阵
+  let matrixHtml = '<table class="perm-matrix"><thead><tr><th style="min-width:120px">用户 \\ 对象</th>';
+  TABLES.forEach(t => matrixHtml += `<th>${t}</th>`);
+  matrixHtml += '</tr></thead><tbody>';
+  if (users.length === 0) {
+    matrixHtml += '<tr><td colspan="4" style="color:#8b949e;padding:20px">（当前无用户）</td></tr>';
+  }
+  users.forEach(u => {
+    matrixHtml += `<tr><td class="user-cell">${escapeHtml(u)}</td>`;
+    TABLES.forEach(t => {
+      const cellPerms = state.grants.filter(g => g.user === u && g.obj === t);
+      if (!cellPerms.length) {
+        matrixHtml += '<td class="perm-empty">·</td>';
+      } else {
+        const parts = cellPerms.map(g => renderPermAbbr(g));
+        matrixHtml += `<td class="perm-cell">${parts.join(' / ')}</td>`;
+      }
+    });
+    matrixHtml += '</tr>';
+  });
+  matrixHtml += '</tbody></table>';
+
+  // 角色卡片
+  const roleKeys = Object.keys(state.roles).sort();
+  let roleHtml = '';
+  if (roleKeys.length) {
+    roleHtml = '<details open style="margin-top:14px"><summary style="cursor:pointer;font-weight:600;color:#0969da">🎭 角色列表（' + roleKeys.length + '）</summary><div style="margin-top:8px">';
+    roleKeys.forEach(rk => {
+      const r = state.roles[rk];
+      const permStr = (r.privileges || []).length
+        ? (r.privileges).map(p => renderPermAbbr({ priv: p.priv, obj: p.obj, with_grant: p.with_grant, columns: p.columns }) + '@' + p.obj).join(' , ')
+        : '（无权限）';
+      const users = (r.granted_to_users || []).length ? r.granted_to_users.join(', ') : '（未授给任何用户）';
+      roleHtml += `<div class="role-card">
+        <b>🎭 ${escapeHtml(rk)}</b>
+        <div class="role-perms">🔑 权限：${permStr}</div>
+        <div class="role-users">👥 已授予用户：${escapeHtml(users)}</div>
+      </div>`;
+    });
+    roleHtml += '</div></details>';
+  } else {
+    roleHtml = '<details style="margin-top:14px"><summary style="cursor:pointer;font-weight:600;color:#8b949e">🎭 角色列表（0）</summary><div style="padding:10px;color:#8b949e;font-size:12px">当前没有定义任何角色。CREATE ROLE 后角色会出现在这里。</div></details>';
+  }
+
+  // 用户列表快速提示
+  const userListHtml = `<div style="margin-top:10px;font-size:12px;color:#57606a">👥 <b>当前用户（${users.length}）</b>：${users.map(u => `<code>${escapeHtml(u)}</code>`).join(' · ') || '（无）'}</div>`;
+
+  // 三张业务表数据（折叠）
+  const bizHtml = `
+    <div class="biz-preview">
+      <details>
+        <summary>📋 三张业务表数据（DCL 授权对象 · 折叠参考）</summary>
+        <div class="biz-tabs" id="${idPrefix}-tabs">
+          <div class="biz-tab active" data-tbl="employee">employee</div>
+          <div class="biz-tab" data-tbl="department">department</div>
+          <div class="biz-tab" data-tbl="project">project</div>
+        </div>
+        <div class="biz-body" id="${idPrefix}-body">${renderTablePreview('employee')}</div>
+      </details>
+    </div>`;
+
+  return `
+    <div class="state-preview">
+      <div class="state-preview-header">
+        <span>${headerTitle}</span>
+        <span style="font-size:11px;color:#57606a">${users.length} 用户 · ${state.grants.length} 权限记录 · ${roleKeys.length} 角色</span>
+      </div>
+      <div class="state-preview-body">
+        ${matrixHtml}
+        ${userListHtml}
+        <div class="perm-legend">
+          <b>图例</b>：S=SELECT · I=INSERT · U=UPDATE · D=DELETE · A=ALL · R=REFERENCES · <b>★</b>=WITH GRANT OPTION · <code>(col1,col2)</code>=字段级 · <code>·</code>=无权限
+        </div>
+        ${roleHtml}
+        ${bizHtml}
+      </div>
+    </div>
+  `;
+}
+
+function renderPermAbbr(g) {
+  const abbr = { SELECT: 'S', INSERT: 'I', UPDATE: 'U', DELETE: 'D', ALL: 'A', REFERENCES: 'R' }[g.priv] || g.priv[0];
+  const colStr = g.columns ? `(${g.columns.join(',')})` : '';
+  const suffix = g.with_grant ? '★' : '';
+  return abbr + colStr + suffix;
+}
+
+function bindBizPreviewTabs(idPrefix) {
+  const tabsEl = document.getElementById(idPrefix + '-tabs');
+  const bodyEl = document.getElementById(idPrefix + '-body');
+  if (!tabsEl || !bodyEl) return;
+  tabsEl.querySelectorAll('.biz-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      tabsEl.querySelectorAll('.biz-tab').forEach(x => x.classList.remove('active'));
+      this.classList.add('active');
+      bodyEl.innerHTML = renderTablePreview(this.dataset.tbl);
+    });
+  });
+}
+
+function renderTablePreview(t) {
+  try {
+    const kindRes = db.exec(`SELECT type FROM sqlite_master WHERE name='${t}';`);
+    if (!kindRes.length) return `<div style="padding:16px;color:#cf222e">⚠️ 表 <code>${escapeHtml(t)}</code> 不存在</div>`;
+    const dataRes = db.exec(`SELECT * FROM ${t} LIMIT 12`);
+    const countRes = db.exec(`SELECT COUNT(*) FROM ${t};`);
+    const rowCount = countRes.length ? countRes[0].values[0][0] : 0;
+    let html = `<div style="padding:6px 12px;background:#f6f8fa;font-size:11px;color:#57606a;border-bottom:1px solid #eaecef">📊 <b>${escapeHtml(t)}</b>（${rowCount} 行${rowCount > 12 ? '，仅显示前 12 行' : ''}）</div>`;
+    if (!dataRes.length) {
+      html += `<div style="padding:16px;color:#8b949e;text-align:center;font-size:13px">📭 表 <b>${escapeHtml(t)}</b> 为空</div>`;
+    } else {
+      html += renderPreviewRows(dataRes[0].columns, dataRes[0].values);
+    }
+    return html;
+  } catch (e) {
+    return `<div style="padding:20px;color:#cf222e">读取失败: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderPreviewRows(columns, values) {
+  const shown = values.slice(0, 12);
+  let html = '<table><thead><tr>';
+  columns.forEach(c => { html += `<th>${escapeHtml(c)}</th>`; });
+  html += '</tr></thead><tbody>';
+  shown.forEach(row => {
+    html += '<tr>';
+    row.forEach(v => {
+      const isNum = typeof v === 'number';
+      const cls = isNum ? ' class="r"' : '';
+      html += `<td${cls}>${v === null ? '<i style="color:#8b949e">NULL</i>' : escapeHtml(String(v))}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+// ============ 题目卡片渲染 ============
+function renderQu(L) {
+  const state = progress[L.id] || 'none';
+  const stateIcon = state === 'passed' ? '✅' : (state === 'attempted' ? '🟠' : '');
+  const baselineNote = (L.baseline && L.baseline.length)
+    ? `<div style="background:#ddf4ff;padding:6px 10px;border-left:3px solid #54aeff;border-radius:4px;font-size:12px;color:#0550ae;margin-bottom:10px">🔗 <b>依赖前置：</b> 本题假设以下 SQL 已执行（对答/运行时会自动叠加到初态之上）：<pre style="margin:6px 0 0;padding:6px 10px;background:white;border-radius:3px;border:1px solid #b6e3ff;font-family:monospace;font-size:11px;white-space:pre-wrap">${escapeHtml(L.baseline.join('\n'))}</pre></div>`
+    : '';
+  return `
+    <div class="qu" id="qu-${L.id}">
+      <h2>
+        <span class="qid">${L.id}</span>
+        <span>${L.title}</span>
+        <span class="badge ${L.difficulty}">${difficultyLabel(L.difficulty)}</span>
+        <span style="margin-left:auto;font-size:14px">${stateIcon}</span>
+      </h2>
+      <div class="intro">${L.intro}</div>
+      <div class="imper">🎯 ${L.imper}</div>
+      ${baselineNote}
+      <div class="editor-wrap">
+        <textarea id="sql-${L.id}" spellcheck="false">${escapeHtml(L.starter)}</textarea>
+        <button class="reset-starter" onclick="resetStarter('${L.id}')" title="恢复起手 SQL">↺ 起手</button>
+      </div>
+      <div class="qu-actions">
+        <button class="purple" onclick="runQu('${L.id}')">▶ 运行（模拟）</button>
+        <button class="primary" onclick="checkQu('${L.id}')">✓ 对答案</button>
+        <button class="ghost" onclick="clearQu('${L.id}')">🗑 清空</button>
+      </div>
+      <div class="feedback" id="feedback-${L.id}"></div>
+      <div class="result-box" id="result-${L.id}">
+        <div class="result-header">
+          <span id="result-title-${L.id}">运行结果</span>
+          <span id="result-meta-${L.id}"></span>
+        </div>
+        <div class="result-body" id="result-body-${L.id}"></div>
+      </div>
+      ${(() => {
+        const hintsArr = L.hints || ['独立思考一下~'];
+        const total = hintsArr.length;
+        if (total <= 1) {
+          return `<details class="hint-block"><summary>💡 提示</summary><div>${hintsArr[0]}</div></details>`;
+        }
+        const items = hintsArr.map((h, i) => `<div class="hint-item" id="hint-item-${L.id}-${i}"${i > 0 ? ' style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #ffdfb5"' : ''}><b>提示 ${i + 1}：</b>${h}</div>`).join('');
+        return `<details class="hint-block">
+          <summary>💡 分级提示 · <span id="hint-shown-${L.id}">1</span>/${total}</summary>
+          <div>
+            ${items}
+            <button id="hint-more-${L.id}" onclick="showNextHint('${L.id}', ${total})" style="margin-top:10px; font-size:12px; padding:4px 10px; background:#fff; border:1px solid #ffdfb5; color:#953800; border-radius:4px; cursor:pointer;">👇 继续查看下一条提示</button>
+          </div>
+        </details>`;
+      })()}
+      <details class="ans-block">
+        <summary>👀 参考答案</summary>
+        <div>
+          <div id="ans-warn-${L.id}" style="padding:4px 0;">
+            <div style="color:#57606a; font-size:12px; margin-bottom:6px;">⚠️ 看答案后就不算你独立完成了哦～建议先按提示多试几次</div>
+            <button onclick="revealAnswer('${L.id}')" style="font-size:12px; padding:4px 12px; background:#0969da; color:white; border:none; border-radius:4px; cursor:pointer;">我已知晓，展示答案</button>
+          </div>
+          <pre id="ans-code-${L.id}" style="display:none">${escapeHtml(L.answer)}</pre>
+        </div>
+      </details>
+    </div>
+  `;
+}
+
+function bindQuEvents(L) {
+  const ta = document.getElementById('sql-' + L.id);
+  if (!ta) return;
+  ta.addEventListener('keydown', function(e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const s = this.selectionStart, en = this.selectionEnd;
+      this.value = this.value.substring(0, s) + '  ' + this.value.substring(en);
+      this.selectionStart = this.selectionEnd = s + 2;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      runQu(L.id);
+    }
+  });
+}
+
+function difficultyLabel(d) {
+  return { easy: '简单', medium: '中等', hard: '困难' }[d] || d;
+}
+
+// ============ 每题的运行/对答 ============
+function getSQL(qid) {
+  return document.getElementById('sql-' + qid).value.trim();
+}
+
+// 运行：clone INITIAL_STATE + apply baseline + apply 学生 SQL，展示临时状态
+function runQu(qid) {
+  const L = LESSONS.find(x => x.id === qid);
+  const sql = getSQL(qid);
+  if (!sql) { showQuFeedback(qid, 'fail', '请先输入 SQL 语句。'); return; }
+  const box = document.getElementById('result-' + qid);
+  const body = document.getElementById('result-body-' + qid);
+  const title = document.getElementById('result-title-' + qid);
+  const meta = document.getElementById('result-meta-' + qid);
+  hideQuFeedback(qid);
+  box.classList.add('show');
+
+  // parse
+  const parsed = parseAllDCL(sql);
+  if (parsed.asts.length === 0) {
+    title.textContent = '✗ DCL 语法不识别';
+    meta.textContent = '';
+    body.innerHTML = `<div class="err-msg">❌ Parser 未能识别你输入的 DCL 语法。请检查关键字 / 引号 / 语法结构。\n\n支持的语法：\n  CREATE USER 'name' IDENTIFIED BY 'password'\n  DROP USER 'name'\n  ALTER USER 'name' IDENTIFIED BY 'newpwd'\n  CREATE ROLE 'role_name'\n  GRANT priv[, priv | (col1, col2)] ON obj TO 'user' [WITH GRANT OPTION]\n  GRANT 'role' TO 'user'\n  REVOKE priv[, priv | (col1, col2)] ON obj FROM 'user'\n  REVOKE 'role' FROM 'user'\n\n你的输入：\n${escapeHtml(sql)}${parsed.failures.length ? '\n\n失败语句：\n  ' + parsed.failures.map(f => f.raw).join('\n  ') : ''}</div>`;
+    showQuFeedback(qid, 'fail', '❌ DCL 语法不识别，请检查关键字/引号。');
+    return;
+  }
+
+  const t0 = performance.now();
+  const state = cloneState(INITIAL_STATE);
+  // 先叠加 baseline
+  if (L.baseline && L.baseline.length) {
+    L.baseline.forEach(b => {
+      const bp = parseAllDCL(b);
+      applyAll(state, bp.asts);
+    });
+  }
+  // 再叠加学生 SQL
+  const applyResults = applyAll(state, parsed.asts);
+  const dt = (performance.now() - t0).toFixed(1);
+  const errApply = applyResults.find(r => !r.ok);
+
+  title.textContent = errApply ? '⚠️ 状态变更部分成功' : '✓ 模拟执行完成';
+  meta.textContent = `${dt}ms · 前端虚拟状态（不影响初态）`;
+
+  // 展示模拟后的完整状态
+  let html = renderStatePreview(state, `🔍 你的 SQL 跑完后的虚拟状态（${parsed.asts.length} 条 DCL 语句已应用）`, `preview-${qid}`);
+  if (errApply) {
+    html = `<div style="padding:8px 12px;background:#ffebe9;border-bottom:1px solid #ffa198;color:#82071e;font-size:12px">⚠️ ${escapeHtml(errApply.msg)}</div>` + html;
+  }
+  body.innerHTML = html;
+  bindBizPreviewTabs(`preview-${qid}`);
+
+  // 标记为尝试过
+  if (progress[qid] !== 'passed') {
+    progress[qid] = 'attempted';
+    saveProgress(); renderNav(); updateProgress();
+  }
+}
+
+// 对答案：双 clone INITIAL_STATE，各自 apply baseline + apply answer/student，对比最终 state
+function checkQu(qid) {
+  const L = LESSONS.find(x => x.id === qid);
+  const sql = getSQL(qid);
+  if (!sql) { showQuFeedback(qid, 'fail', '请先输入 SQL 语句。'); return; }
+
+  // parse 学生
+  const stuParsed = parseAllDCL(sql);
+  // parse 答案
+  const ansParsed = parseAllDCL(L.answer);
+
+  // 方式 A：结构对比（主）
+  let passA = false, msgA = '', canRunA = true;
+  if (stuParsed.asts.length === 0) {
+    canRunA = false;
+    msgA = 'parser 未能识别你的 SQL，尝试兜底 SQL 字符串比对';
+  }
+  let stuState = null, ansState = null;
+  if (canRunA) {
+    stuState = cloneState(INITIAL_STATE);
+    ansState = cloneState(INITIAL_STATE);
+    if (L.baseline && L.baseline.length) {
+      L.baseline.forEach(b => {
+        const bp = parseAllDCL(b);
+        applyAll(stuState, bp.asts);
+        applyAll(ansState, bp.asts);
+      });
+    }
+    applyAll(stuState, stuParsed.asts);
+    applyAll(ansState, ansParsed.asts);
+    const cmp = stateEquals(stuState, ansState);
+    passA = cmp.pass;
+    msgA = cmp.msg;
+  }
+
+  // 方式 B：SQL normalize 兜底
+  let passB = false;
+  if (!passA) {
+    passB = normalizeSQL(sql) === normalizeSQL(L.answer);
+  }
+
+  const pass = passA || passB;
+  const box = document.getElementById('result-' + qid);
+  const body = document.getElementById('result-body-' + qid);
+  const title = document.getElementById('result-title-' + qid);
+  const meta = document.getElementById('result-meta-' + qid);
+  box.classList.add('show');
+
+  if (pass) {
+    title.textContent = '你的最终虚拟状态';
+    meta.textContent = passA ? '结构对比通过' : 'SQL normalize 兜底通过';
+    // 展示学生的最终 state
+    if (!stuState) {
+      // parseA 失败但 SQL 字面等价 —— 显示答案状态
+      stuState = cloneState(INITIAL_STATE);
+      if (L.baseline) L.baseline.forEach(b => applyAll(stuState, parseAllDCL(b).asts));
+      applyAll(stuState, ansParsed.asts);
+    }
+    body.innerHTML = renderStatePreview(stuState, '✅ 你的最终虚拟状态（与参考答案一致）', `preview-${qid}`);
+    bindBizPreviewTabs(`preview-${qid}`);
+    showQuFeedback(qid, 'pass', `✅ <b>通过！</b> ${passA ? '虚拟状态与参考答案完全一致。' : '结构对比未过，但 SQL 字符串与答案等价，通过。'}`);
+    progress[qid] = 'passed';
+    saveProgress(); renderNav(); updateProgress();
+    const iconEl = document.querySelector(`#qu-${qid} h2 > span:last-child`);
+    if (iconEl) iconEl.textContent = '✅';
+  } else {
+    title.textContent = '你的最终虚拟状态 vs 参考答案';
+    meta.textContent = '';
+    let html = '';
+    if (stuState) {
+      html += renderStatePreview(stuState, '❌ 你的最终虚拟状态', `preview-${qid}-stu`);
+      html += renderStatePreview(ansState, '📖 参考答案的最终虚拟状态（供对照）', `preview-${qid}-ans`);
+    } else {
+      html = `<div style="padding:12px;color:#cf222e">❌ Parser 未能识别你的 SQL，无法进行结构对比。SQL 字符串与答案也不等价。</div>`;
+    }
+    body.innerHTML = html;
+    bindBizPreviewTabs(`preview-${qid}-stu`);
+    bindBizPreviewTabs(`preview-${qid}-ans`);
+    showQuFeedback(qid, 'fail', `❌ <b>未通过。</b> ${escapeHtml(msgA || '结构对比失败')}`);
+    if (progress[qid] !== 'passed') {
+      progress[qid] = 'attempted';
+      saveProgress(); renderNav(); updateProgress();
+    }
+  }
+}
+
+function clearQu(qid) {
+  document.getElementById('sql-' + qid).value = '';
+  hideQuFeedback(qid);
+  document.getElementById('result-' + qid).classList.remove('show');
+}
+
+function resetStarter(qid) {
+  const L = LESSONS.find(x => x.id === qid);
+  document.getElementById('sql-' + qid).value = L.starter;
+  hideQuFeedback(qid);
+}
+
+function showQuFeedback(qid, cls, msg) {
+  const el = document.getElementById('feedback-' + qid);
+  el.className = 'feedback show ' + cls;
+  el.innerHTML = msg;
+}
+function hideQuFeedback(qid) {
+  document.getElementById('feedback-' + qid).className = 'feedback';
+}
+
+// ============ 进度 ============
+function saveProgress() { localStorage.setItem('sqlplay_dcl_progress_v1', JSON.stringify(progress)); }
+function updateProgress() {
+  const passed = Object.values(progress).filter(v => v === 'passed').length;
+  document.getElementById('progress-text').textContent = `进度 ${passed} / ${LESSONS.length}`;
+  document.getElementById('progress-bar-inner').style.width = (passed / LESSONS.length * 100) + '%';
+}
+function resetProgress() {
+  if (!confirm('确定清除所有进度？（虚拟状态不受影响）')) return;
+  progress = {}; saveProgress(); renderNav(); updateProgress();
+  renderMain(currentGroup);
+}
+
+// ============ 工具 ============
+function showNextHint(qid, total) {
+  const shownEl = document.getElementById('hint-shown-' + qid);
+  if (!shownEl) return;
+  let shown = parseInt(shownEl.textContent);
+  if (shown < total) {
+    const nextItem = document.getElementById(`hint-item-${qid}-${shown}`);
+    if (nextItem) nextItem.style.display = '';
+    shown++;
+    shownEl.textContent = shown;
+    if (shown >= total) {
+      const btn = document.getElementById('hint-more-' + qid);
+      if (btn) btn.style.display = 'none';
+    }
+  }
+}
+
+function revealAnswer(qid) {
+  const warn = document.getElementById('ans-warn-' + qid);
+  const code = document.getElementById('ans-code-' + qid);
+  if (warn) warn.style.display = 'none';
+  if (code) code.style.display = '';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+init();
+</script>
+</body>
+</html>

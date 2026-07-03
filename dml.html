@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL 练习场 · DML 数据操作 · v0.8</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f6f8fa;
+    color: #24292f;
+    font-size: 14px;
+  }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ============ Header ============ */
+  header {
+    background: linear-gradient(90deg, #0969da 0%, #218bff 100%);
+    color: white;
+    padding: 10px 24px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: 48px;
+  }
+  header h1 { margin: 0; font-size: 17px; font-weight: 600; }
+  header .status { font-size: 13px; opacity: 0.95; }
+  #status-badge.loading { color: #fff9c4; }
+  #status-badge.ready { color: #b8f5c8; }
+  #status-badge.error { color: #ffcdd2; }
+
+  /* ============ Top Nav ============ */
+  nav.topnav {
+    background: #ffffff;
+    border-bottom: 1px solid #d0d7de;
+    padding: 0 24px;
+    display: flex;
+    gap: 0;
+    position: sticky;
+    top: 48px;
+    z-index: 99;
+    height: 44px;
+    align-items: stretch;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  nav.topnav a {
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    font-size: 14px;
+    color: #57606a;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    font-weight: 500;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  nav.topnav a:hover:not(.disabled):not(.active) { color: #0969da; text-decoration: none; }
+  nav.topnav a.active {
+    color: #0969da;
+    border-bottom-color: #0969da;
+    font-weight: 600;
+  }
+  nav.topnav a.disabled {
+    color: #b1bac4;
+    cursor: not-allowed;
+  }
+  nav.topnav a.disabled:hover { text-decoration: none; }
+
+  /* ============ Layout ============ */
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: calc(100vh - 92px);
+  }
+
+  /* ============ Sidebar ============ */
+  aside {
+    background: #ffffff;
+    border-right: 1px solid #d0d7de;
+    padding: 12px 0;
+    position: sticky;
+    top: 92px;
+    height: calc(100vh - 92px);
+    overflow-y: auto;
+  }
+  .progress-bar {
+    padding: 8px 16px 12px;
+    font-size: 11px;
+    color: #57606a;
+    border-bottom: 1px solid #eaecef;
+    margin-bottom: 8px;
+  }
+  .progress-fill {
+    height: 4px;
+    background: #eaecef;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .progress-fill > div {
+    height: 100%;
+    background: linear-gradient(90deg, #2da44e, #4ac26b);
+    transition: width 0.3s;
+  }
+  .lesson-group {
+    padding: 8px 16px 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #57606a;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  .lesson-group:hover { color: #0969da; }
+  .lesson-group.active { color: #0969da; }
+  .lesson-item {
+    padding: 5px 20px 5px 32px;
+    font-size: 13px;
+    color: #24292f;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.4;
+  }
+  .lesson-item:hover { background: #f6f8fa; }
+  .lesson-item .lesson-num { color: #8b949e; font-size: 11px; font-family: monospace; min-width: 26px; }
+  .lesson-item .title-text { flex: 1; }
+  .lesson-item .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #d0d7de; flex-shrink: 0;
+  }
+  .lesson-item.passed .status-dot { background: #2da44e; }
+  .lesson-item.attempted .status-dot { background: #fb8500; }
+  .tool-item {
+    padding: 8px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #57606a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tool-item:hover { background: #f6f8fa; color: #24292f; }
+
+  /* ============ Main content ============ */
+  main {
+    padding: 24px 40px 80px;
+    max-width: 920px;
+    width: 100%;
+  }
+  .group-header {
+    margin-bottom: 24px;
+  }
+  .group-header h1 {
+    font-size: 26px;
+    margin: 0 0 8px;
+    font-weight: 700;
+    color: #24292f;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #0969da;
+    display: inline-block;
+  }
+  .group-header .subtitle {
+    color: #57606a;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ============ Top data preview ============ */
+  .db-preview {
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .db-preview-header {
+    background: #EEF3E2;
+    padding: 8px 14px;
+    font-size: 13px;
+    color: #24292f;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #d0d7de;
+  }
+  .db-preview-header .tabs { display: flex; gap: 4px; }
+  .db-preview-header .tab {
+    padding: 3px 10px;
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #24292f;
+    font-family: monospace;
+  }
+  .db-preview-header .tab.active { background: #0969da; color: white; border-color: #0860c8; }
+  .db-preview-body { padding: 0; overflow-x: auto; max-height: 240px; overflow-y: auto; }
+  .db-preview-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+  }
+  .db-preview-body th, .db-preview-body td {
+    padding: 5px 10px;
+    border-bottom: 1px solid #eaecef;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .db-preview-body th {
+    background: #f6f8fa;
+    font-weight: 600;
+    color: #24292f;
+    position: sticky;
+    top: 0;
+  }
+  .db-preview-body td.r { text-align: right; }
+
+  /* ============ Problem card ============ */
+  .qu {
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    scroll-margin-top: 60px;
+  }
+  .qu h2 {
+    margin: 0 0 14px;
+    font-size: 19px;
+    font-weight: 600;
+    color: #24292f;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eaecef;
+  }
+  .qu h2 .qid {
+    font-family: monospace;
+    color: #0969da;
+    font-size: 15px;
+    background: #ddf4ff;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+  }
+  .badge.easy { background: #2da44e; }
+  .badge.medium { background: #fb8500; }
+  .badge.hard { background: #cf222e; }
+
+  .qu .intro {
+    color: #24292f;
+    line-height: 1.7;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+  .qu .intro b { color: #0550ae; font-weight: 700; }
+  .qu .imper {
+    background: #ddf4ff;
+    padding: 10px 14px;
+    border-left: 3px solid #0969da;
+    border-radius: 4px;
+    margin-bottom: 14px;
+    color: #0550ae;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+  .qu .imper b { color: #082567; }
+  .qu .note {
+    background: #fff8c5;
+    padding: 6px 10px;
+    border-left: 3px solid #d4a72c;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #7d4e00;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .qu code {
+    background: #eff1f3;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 12px;
+    color: #cf222e;
+  }
+
+  .editor-wrap {
+    position: relative;
+    margin-bottom: 10px;
+  }
+  .editor-wrap textarea {
+    width: 100%;
+    min-height: 100px;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+    font-size: 13px;
+    padding: 10px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    resize: vertical;
+    background: #ffffff;
+    line-height: 1.5;
+    color: #24292f;
+  }
+  .editor-wrap textarea:focus { outline: none; border-color: #0969da; box-shadow: 0 0 0 3px rgba(9,105,218,0.15); }
+  .editor-wrap .reset-starter {
+    position: absolute;
+    right: 8px;
+    top: 6px;
+    background: rgba(246,248,250,0.9);
+    border: 1px solid #d0d7de;
+    padding: 2px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #57606a;
+  }
+  .editor-wrap .reset-starter:hover { color: #24292f; background: white; }
+
+  .qu-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  button {
+    padding: 5px 12px;
+    border: 1px solid #d0d7de;
+    background: #f6f8fa;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #24292f;
+    transition: all 0.15s;
+  }
+  button:hover:not(:disabled) { background: #eaecef; border-color: #afb8c1; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.primary { background: #2da44e; color: white; border-color: #2c974b; }
+  button.primary:hover:not(:disabled) { background: #2c974b; }
+  button.blue { background: #0969da; color: white; border-color: #0860c8; }
+  button.blue:hover:not(:disabled) { background: #0860c8; }
+  button.ghost { background: transparent; font-size: 12px; padding: 4px 10px; color: #57606a; }
+
+  .result-box {
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    overflow: hidden;
+    display: none;
+    margin-bottom: 8px;
+  }
+  .result-box.show { display: block; }
+  .result-box .result-header {
+    padding: 6px 12px;
+    background: #f6f8fa;
+    font-size: 12px;
+    color: #57606a;
+    border-bottom: 1px solid #d0d7de;
+    display: flex;
+    justify-content: space-between;
+  }
+  .result-box .result-body {
+    max-height: 300px;
+    overflow: auto;
+  }
+  table.result {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+  }
+  table.result th, table.result td {
+    padding: 4px 10px;
+    border-bottom: 1px solid #eaecef;
+    text-align: left;
+    white-space: nowrap;
+  }
+  table.result th { background: #f6f8fa; font-weight: 600; position: sticky; top: 0; }
+  table.result td.null { color: #8b949e; font-style: italic; }
+  .err-msg {
+    padding: 10px 14px;
+    color: #cf222e;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    background: #ffebe9;
+  }
+
+  .feedback {
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    display: none;
+    margin-bottom: 8px;
+  }
+  .feedback.show { display: block; }
+  .feedback.pass { background: #dafbe1; color: #116329; border: 1px solid #4ac26b; }
+  .feedback.fail { background: #ffebe9; color: #82071e; border: 1px solid #ffa198; }
+  .feedback.info { background: #ddf4ff; color: #0550ae; border: 1px solid #54aeff; }
+
+  details.ans-block {
+    margin-top: 8px;
+    background: #f6f8fa;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  details.ans-block summary { cursor: pointer; color: #0969da; font-weight: 600; }
+  details.ans-block pre {
+    background: white;
+    padding: 10px 12px;
+    border-radius: 4px;
+    border: 1px solid #eaecef;
+    margin: 8px 0 0;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: #24292f;
+  }
+  details.hint-block {
+    margin-top: 8px;
+    background: #fff8f0;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    border: 1px solid #ffdfb5;
+  }
+  details.hint-block summary { cursor: pointer; color: #953800; font-weight: 600; }
+  details.hint-block > div { padding-top: 8px; line-height: 1.7; }
+
+  kbd {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: monospace;
+    font-size: 11px;
+    box-shadow: inset 0 -1px 0 #d0d7de;
+    color: #24292f;
+  }
+
+  /* SQL syntax highlight-ish */
+  .sql-keyword { color: #cf222e; font-weight: bold; }
+  .sql-string { color: #0a3069; }
+  .sql-number { color: #953800; }
+</style>
+</head>
+<body>
+<header>
+  <h1>❄️ SQL 练习场 · DML 数据操作 <span style="opacity:0.7;font-size:12px;font-weight:400;">v0.8 · 上海电力大学·数据库原理及应用</span></h1>
+  <div class="status">状态：<span id="status-badge" class="loading">正在加载 SQLite 引擎…</span></div>
+</header>
+
+<nav class="topnav">
+  <a href="index.html">📖 查询练习 <span style="opacity:0.6;font-size:12px;margin-left:2px">50题</span></a>
+  <a href="ddl.html">🏗️ DDL 建表 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+  <a href="dml.html" class="active">📝 DML 数据操作 <span style="opacity:0.7;font-size:12px;margin-left:2px">15题</span></a>
+  <a href="dcl.html">🔐 DCL 权限控制 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+</nav>
+
+<div class="layout">
+  <aside>
+    <div class="progress-bar">
+      <span id="progress-text">进度 0 / 15</span>
+      <div class="progress-fill"><div id="progress-bar-inner" style="width:0%"></div></div>
+    </div>
+    <div id="nav-list"></div>
+    <div class="lesson-group" style="margin-top:12px; cursor:default">🛠️ 工具</div>
+    <div class="tool-item" onclick="resetDB()" title="清空所有表数据并恢复到初始 12 员工 / 5 部门 / 6 项目（当 INSERT / UPDATE / DELETE 玩坏时用）">↺ 重置初始数据</div>
+    <div class="tool-item" onclick="resetProgress()" title="清除已通过/尝试过的题目记录（数据库不受影响）">🧹 清除进度</div>
+  </aside>
+
+  <main id="main-content">
+    <!-- 内容动态渲染 -->
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.js"></script>
+<script>
+// ============ 数据库初始化 SQL（人事管理系统 · 3 张满数据表 + 1 张空归档表） ============
+// 教学场景说明：
+//   - employee（12 行）/ department（5 行）/ project（6 行）是 DML 题的操作对象（预填初始数据）
+//   - employee_archive 是给 M04 INSERT ... SELECT 题用的（结构同 employee 但初始为空，学生把技术部员工复制过去）
+//   - 每次 resetDB / 每题独立 db 运行时都重跑本 INIT_SQL，学生反复试错都从相同起点出发
+//   - DML 题的验证策略：clone 初始 db 分别跑 answerSQL / studentSQL，对比目标表数据是否一致
+const INIT_SQL = `
+DROP TABLE IF EXISTS employee_archive;
+DROP TABLE IF EXISTS employee;
+DROP TABLE IF EXISTS department;
+DROP TABLE IF EXISTS project;
+
+CREATE TABLE department (
+  department_id INT PRIMARY KEY,
+  department_name VARCHAR(50)
+);
+
+CREATE TABLE employee (
+  employee_id INT PRIMARY KEY,
+  name VARCHAR(30),
+  gender CHAR(1),
+  birth_date DATE,
+  salary DECIMAL(10,2),
+  department_id INT
+);
+
+CREATE TABLE project (
+  project_id INT PRIMARY KEY,
+  project_name VARCHAR(50),
+  budget DECIMAL(12,2)
+);
+
+CREATE TABLE employee_archive (
+  employee_id INT PRIMARY KEY,
+  name VARCHAR(30),
+  gender CHAR(1),
+  birth_date DATE,
+  salary DECIMAL(10,2),
+  department_id INT
+);
+
+INSERT INTO department VALUES
+  (1, '技术部'),
+  (2, '销售部'),
+  (3, '市场部'),
+  (4, '人力资源部'),
+  (5, '财务部');
+
+INSERT INTO employee VALUES
+  (100, '张伟', 'M', '1990-05-12', 15000, 1),
+  (101, '李娜', 'F', '1988-08-23', 18500, 1),
+  (102, '王强', 'M', '1985-03-15', 22000, 1),
+  (103, '赵敏', 'F', '1992-11-08', 12000, 2),
+  (104, '陈磊', 'M', '1987-07-22', 16000, 2),
+  (105, '刘洋', 'M', '1995-02-14',  8500, 2),
+  (106, '孙丽', 'F', '1991-09-30', 13000, 3),
+  (107, '周涛', 'M', '1989-12-05', 14500, 3),
+  (108, '吴敏', 'F', '1993-06-18', 11000, 4),
+  (109, '郑辉', 'M', '1986-04-27', 20000, 4),
+  (110, '徐芳', 'F', '1994-10-11',  9800, 5),
+  (111, '朱强', 'M', '1990-01-19', 17500, 5);
+
+INSERT INTO project VALUES
+  (1001, '电商平台重构', 500000),
+  (1002, '数据中台建设', 800000),
+  (1003, '新品发布会', 200000),
+  (1004, '客户满意度调研', 150000),
+  (1005, '年度审计', 300000),
+  (1006, '员工培训体系', 100000);
+`;
+
+// ============ 分组配置 ============
+const GROUPS = [
+  {
+    key: 'insert', icon: '📥', title: 'INSERT 数据插入',
+    subtitle: 'INSERT 用来向表里加新行。完整列 <code>INSERT INTO t VALUES(...)</code> 需按建表顺序给所有字段；部分列 <code>INSERT INTO t(col1,col2) VALUES(...)</code> 只填指定字段，其余自动 NULL；一条 INSERT 可插入多行；也可以用 <code>INSERT ... SELECT</code> 从另一张表复制数据。',
+    tables: ['employee', 'department', 'project', 'employee_archive'],
+  },
+  {
+    key: 'update', icon: '✏️', title: 'UPDATE 数据更新',
+    subtitle: 'UPDATE 修改已有行。语法 <code>UPDATE t SET col=val WHERE 条件</code>。<b>WHERE 是安全阀</b> —— 忘写会把整张表都改了！SET 后可以写常量、表达式（如 <code>salary * 1.05</code>）、甚至子查询。',
+    tables: ['employee', 'department', 'project'],
+  },
+  {
+    key: 'delete', icon: '🗑️', title: 'DELETE 数据删除',
+    subtitle: 'DELETE 按行删数据（结构保留）。语法 <code>DELETE FROM t WHERE 条件</code>。<b>WHERE 忘写 = 清空整张表！</b> 清整表：SQLite/MySQL/PostgreSQL 用 <code>DELETE FROM t</code>；SQL Server 独有 <code>TRUNCATE TABLE t</code>（更快，不走事务日志，不可回滚）。',
+    tables: ['employee', 'department', 'project'],
+  },
+  {
+    key: 'transaction', icon: '🔒', title: '事务与批量',
+    subtitle: '事务把一组 SQL 打包成"要么全成、要么全废"的原子单元。<code>BEGIN;</code> 开启事务，<code>COMMIT;</code> 提交生效，<code>ROLLBACK;</code> 撤销回到 BEGIN 之前。转账、批量导入等场景必须用事务保护。方言注：MySQL 用 <code>START TRANSACTION</code> / <code>BEGIN</code>；SQL Server 用 <code>BEGIN TRANSACTION</code> / <code>COMMIT TRAN</code> / <code>ROLLBACK TRAN</code>；SQLite（本页）用 <code>BEGIN</code> / <code>COMMIT</code> / <code>ROLLBACK</code>。',
+    tables: ['employee', 'department', 'project'],
+  },
+];
+
+// ============ 题库 15 道（DML） ============
+// 字段说明：
+//   id: 题号（D01-D15）
+//   group: 所属分组 key (create/constraint/alter/drop/index/view)
+//   title: 题目标题
+//   difficulty: easy/medium/hard
+//   intro: 讲解段落（介绍关键字 + 用法，用 <b> 加粗关键字）
+//   imper: 祈使任务（明确要学生做什么，用 <b> 加粗关键字）
+//   starter: 起手 SQL（编辑器初始内容，学生修改后运行）
+//   answer: 参考答案
+//   hints: 分级提示数组
+//   verify: DDL 验证 SQL（在独立 db 实例跑完 SQL 后执行 verify，对比学生 vs 参考答案的 verify 结果）
+//   note: 备注（可选）
+
+const LESSONS = [
+  // ============================================================
+  // Group 1: INSERT 数据插入（4 题：easy×2 / medium×2）
+  // ============================================================
+  {
+    id: 'M01',
+    group: 'insert',
+    title: '插入一位新员工（完整字段）',
+    difficulty: 'easy',
+    intro: '<b>INSERT INTO 表名 VALUES(...)</b> 是插入数据的基本写法，必须按建表顺序给出<b>所有列</b>的值。<span style="color:#7d4e00">字符串 / 日期字面量必须加单引号，数字直接写。</span>',
+    imper: '向 <code>employee</code> 表插入一位新同事：<b>employee_id = 200</b>、<b>name = "林小凡"</b>、<b>gender = M</b>、<b>birth_date = 1995-06-18</b>、<b>salary = 12000</b>、<b>department_id = 1</b>。',
+    starter: `INSERT INTO employee VALUES (
+  -- 6 个字段按建表顺序填写
+);`,
+    answer: `INSERT INTO employee VALUES (200, '林小凡', 'M', '1995-06-18', 12000, 1);`,
+    hints: [
+      '字符串和日期都要用<b>单引号</b>包裹，数字不用：<code>200</code>、<code>&#39;林小凡&#39;</code>、<code>&#39;M&#39;</code>、<code>&#39;1995-06-18&#39;</code>、<code>12000</code>、<code>1</code>。',
+      '6 个值按逗号分隔，顺序对应建表的 6 列：employee_id, name, gender, birth_date, salary, department_id。',
+    ],
+    verify: { targetTable: 'employee', orderBy: 'employee_id', compareMode: 'full' },
+  },
+  {
+    id: 'M02',
+    group: 'insert',
+    title: '指定列插入（其余字段 NULL）',
+    difficulty: 'easy',
+    intro: '<b>INSERT INTO 表名 (列1, 列2, ...) VALUES(...)</b> 只填部分字段，没指定的字段自动为 <b>NULL</b>。适合主键、姓名必填但性别/生日等信息暂缺的场景。',
+    imper: '向 <code>employee</code> 表插入一位只知工号和姓名的新同事：<b>employee_id = 201</b>、<b>name = "何小雨"</b>。gender / birth_date / salary / department_id 都留空（NULL）。',
+    starter: `INSERT INTO employee (
+  -- 只列两个字段
+) VALUES (
+  -- 对应的两个值
+);`,
+    answer: `INSERT INTO employee (employee_id, name) VALUES (201, '何小雨');`,
+    hints: [
+      '语法：<code>INSERT INTO 表(列1, 列2) VALUES(值1, 值2);</code>',
+      '列名列表与 VALUES 值列表<b>顺序对应</b>、<b>个数一致</b>。',
+    ],
+    verify: { targetTable: 'employee', orderBy: 'employee_id', compareMode: 'full' },
+  },
+  {
+    id: 'M03',
+    group: 'insert',
+    title: '一条 INSERT 插多行',
+    difficulty: 'medium',
+    intro: '一条 INSERT 可以插入<b>多行</b>：<code>INSERT INTO t VALUES (...), (...), (...);</code>，多组小括号用逗号连接。比逐条 INSERT 更高效，一次执行就能批量导入。',
+    imper: '向 <code>project</code> 表一次性插入 3 个新项目：<br>① (1007, &#39;海外市场调研&#39;, 250000)<br>② (1008, &#39;校园招聘&#39;, 80000)<br>③ (1009, &#39;智能客服升级&#39;, 180000)',
+    starter: `INSERT INTO project VALUES
+  (1007, '海外市场调研', 250000),
+  -- 继续补充两行
+;`,
+    answer: `INSERT INTO project VALUES
+  (1007, '海外市场调研', 250000),
+  (1008, '校园招聘', 80000),
+  (1009, '智能客服升级', 180000);`,
+    hints: [
+      '每组值用 <code>(...)</code> 括起来，<b>多组之间用逗号分隔</b>，最后一组后<b>直接加分号</b>即可（不要写逗号加分号）。',
+    ],
+    verify: { targetTable: 'project', orderBy: 'project_id', compareMode: 'full' },
+  },
+  {
+    id: 'M04',
+    group: 'insert',
+    title: 'INSERT ... SELECT 从查询复制数据',
+    difficulty: 'medium',
+    intro: '<b>INSERT INTO t1 SELECT ... FROM t2</b> 可以把查询结果直接插入另一张表。SELECT 列数和顺序必须与目标表一致（或目标列列表）。常用于<b>备份、归档、复制</b>等场景。<div class="note" style="margin-top:6px">📌 本练习场已提前创建了 <code>employee_archive</code>（结构与 employee 相同但初始为空），可直接 INSERT INTO。</div>',
+    imper: '把 <b>技术部</b>（department_id = 1）的<b>所有员工</b>整行复制到 <code>employee_archive</code> 归档表中。',
+    starter: `INSERT INTO employee_archive
+SELECT ...
+FROM employee
+WHERE ...;`,
+    answer: `INSERT INTO employee_archive
+SELECT *
+FROM employee
+WHERE department_id = 1;`,
+    hints: [
+      '目标表 <code>employee_archive</code> 的 6 列顺序与 <code>employee</code> 一致，SELECT 可以直接用 <code>*</code>。',
+      'WHERE 条件锁定技术部：<code>department_id = 1</code>。',
+    ],
+    verify: { targetTable: 'employee_archive', orderBy: 'employee_id', compareMode: 'full' },
+  },
+
+  // ============================================================
+  // Group 2: UPDATE 数据更新（4 题：easy / medium×2 / hard）
+  // ============================================================
+  {
+    id: 'M05',
+    group: 'update',
+    title: '修改指定员工的薪资',
+    difficulty: 'easy',
+    intro: '<b>UPDATE 表名 SET 列 = 新值 WHERE 主键 = 值</b> 是按主键定位修改单行的常用写法。<span style="color:#7d4e00">忘写 WHERE 会把整张表都改了 —— 这是 DML 题最常见的事故！</span>',
+    imper: '把 employee_id = 100 的员工薪资<b>调整到 18000</b>。',
+    starter: `UPDATE employee
+SET salary = ...
+WHERE ...;`,
+    answer: `UPDATE employee
+SET salary = 18000
+WHERE employee_id = 100;`,
+    hints: [
+      '语法：<code>UPDATE 表 SET 列 = 新值 WHERE 主键 = 值;</code>',
+      'WHERE 条件锁定 employee_id = 100，SET 后写 salary = 18000。',
+    ],
+    verify: { targetTable: 'employee', orderBy: 'employee_id', compareMode: 'full' },
+  },
+  {
+    id: 'M06',
+    group: 'update',
+    title: '多条件更新：技术部男员工加薪',
+    difficulty: 'medium',
+    intro: 'WHERE 后可以用 <b>AND</b> 连接多个条件，精确锁定要更新的行。<span style="color:#7d4e00">UPDATE 同样可以 SET 一列 + WHERE 过滤另一列，这是 DML 题的核心用法。</span>',
+    imper: '把<b>技术部</b>（department_id = 1）的<b>所有男员工</b>（gender = &#39;M&#39;）的薪资<b>上调 3000</b>（新值 = 原值 + 3000）。',
+    starter: `UPDATE employee
+SET salary = salary + ...
+WHERE ... AND ...;`,
+    answer: `UPDATE employee
+SET salary = salary + 3000
+WHERE department_id = 1 AND gender = 'M';`,
+    hints: [
+      'SET 里可以写表达式：<code>salary = salary + 3000</code>。',
+      'WHERE 用 AND 组合两个条件：<code>department_id = 1</code> 和 <code>gender = &#39;M&#39;</code>。',
+    ],
+    verify: { targetTable: 'employee', orderBy: 'employee_id', compareMode: 'full' },
+  },
+  {
+    id: 'M07',
+    group: 'update',
+    title: '全员 5% 涨薪（计算表达式）',
+    difficulty: 'medium',
+    intro: 'SET 后面可以写<b>基于当前列的计算表达式</b>，如 <code>salary = salary * 1.05</code> 表示在原值基础上乘 1.05。<span style="color:#7d4e00">这种 "自更新" 写法是 DML 题区别于 SELECT 的关键。</span><div class="note" style="margin-top:6px">📌 DECIMAL(10,2) 在 SQLite 里实际存为 NUMERIC/REAL，<code>salary * 1.05</code> 结果保留 2 位小数可用 <code>ROUND(..., 2)</code> 兜底。</div>',
+    imper: '把<b>全体员工的薪资</b>上调 <b>5%</b>（新值 = 原值 × 1.05，用 ROUND 保留 2 位小数）。',
+    starter: `UPDATE employee
+SET salary = ...;`,
+    answer: `UPDATE employee
+SET salary = ROUND(salary * 1.05, 2);`,
+    hints: [
+      '表达式直接写在 SET 后面：<code>salary * 1.05</code>。',
+      'ROUND 保留 2 位小数：<code>ROUND(salary * 1.05, 2)</code>。',
+      '本题没有 WHERE，代表更新<b>全表所有行</b>。',
+    ],
+    verify: { targetTable: 'employee', orderBy: 'employee_id', compareMode: 'full' },
+  },
+  {
+    id: 'M08',
+    group: 'update',
+    title: '子查询辅助更新：低薪补齐到 12000',
+    difficulty: 'hard',
+    intro: 'UPDATE 的 WHERE 子句可以嵌套<b>子查询</b>：<code>WHERE salary &lt; (SELECT AVG(salary) FROM employee)</code>。子查询先算出全局平均值，再用它过滤要更新的行。<div class="note" style="margin-top:6px">📌 SQL 标准：UPDATE 语句的子查询只执行一次（在修改前算好基准值），不会边更新边重算。</div>',
+    imper: '把<b>薪资低于全体员工平均薪资</b>的员工，<b>补齐到 12000</b>（低于 12000 的改为 12000，其他不动）。',
+    starter: `UPDATE employee
+SET salary = ...
+WHERE salary < (
+  SELECT ... FROM employee
+);`,
+    answer: `UPDATE employee
+SET salary = 12000
+WHERE salary < (SELECT AVG(salary) FROM employee);`,
+    hints: [
+      '子查询先算出平均薪资：<code>SELECT AVG(salary) FROM employee</code>。',
+      'WHERE 过滤低薪：<code>salary &lt; (子查询)</code>。',
+      'SET 后写目标值 12000（不是 salary + xxx，是直接补齐）。',
+    ],
+    verify: { targetTable: 'employee', orderBy: 'employee_id', compareMode: 'full' },
+  },
+
+  // ============================================================
+  // Group 3: DELETE 数据删除（3 题：easy×2 / medium）
+  // ============================================================
+  {
+    id: 'M09',
+    group: 'delete',
+    title: '删除指定员工',
+    difficulty: 'easy',
+    intro: '<b>DELETE FROM 表名 WHERE 主键 = 值</b> 是按主键定位删除单行。<span style="color:#7d4e00">建议操作前先用 SELECT * WHERE ... 确认要删的行，避免误删。</span>',
+    imper: '把 employee_id = 103 的员工从 <code>employee</code> 表中删除。',
+    starter: `DELETE FROM employee
+WHERE ...;`,
+    answer: `DELETE FROM employee
+WHERE employee_id = 103;`,
+    hints: [
+      '语法：<code>DELETE FROM 表 WHERE 主键 = 值;</code>',
+      'WHERE 不能省，否则全表都被删！',
+    ],
+    verify: { targetTable: 'employee', orderBy: 'employee_id', compareMode: 'full' },
+  },
+  {
+    id: 'M10',
+    group: 'delete',
+    title: '多条件删除：财务部女员工',
+    difficulty: 'medium',
+    intro: 'DELETE 的 WHERE 同样支持 AND / OR / IN / BETWEEN / 子查询 等过滤条件。多条件用 AND 锁定，精确到"一组行"。',
+    imper: '删除<b>财务部</b>（department_id = 5）的<b>所有女员工</b>（gender = &#39;F&#39;）。',
+    starter: `DELETE FROM employee
+WHERE ... AND ...;`,
+    answer: `DELETE FROM employee
+WHERE department_id = 5 AND gender = 'F';`,
+    hints: [
+      'WHERE 组合两个条件：<code>department_id = 5</code> 和 <code>gender = &#39;F&#39;</code>。',
+    ],
+    verify: { targetTable: 'employee', orderBy: 'employee_id', compareMode: 'full' },
+  },
+  {
+    id: 'M11',
+    group: 'delete',
+    title: '清空整张 project 表',
+    difficulty: 'easy',
+    intro: '<b>DELETE FROM 表名;</b>（不带 WHERE）会把表里<b>所有行</b>都删掉，但表结构保留。这是最危险的操作之一，生产环境慎敲。<div class="note" style="margin-top:6px">📌 <b>方言注</b>：SQLite / MySQL / PostgreSQL 清整表用 <code>DELETE FROM 表</code>；SQL Server 另有 <code>TRUNCATE TABLE 表</code>（更快，不走事务日志，不可回滚）。本练习场跑 SQLite，用 DELETE FROM 即可。</div>',
+    imper: '把 <code>project</code> 表里的<b>所有行</b>都删除，但保留表结构。',
+    starter: `-- 不带 WHERE 的 DELETE`,
+    answer: `DELETE FROM project;`,
+    hints: [
+      '关键：不要写 WHERE，代表"删全表所有行"。',
+      '语法：<code>DELETE FROM 表名;</code>（FROM 不能省）。',
+    ],
+    verify: { targetTable: 'project', orderBy: 'project_id', compareMode: 'full' },
+  },
+
+  // ============================================================
+  // Group 4: 事务与批量（4 题：medium×3 / hard）
+  // ============================================================
+  {
+    id: 'M12',
+    group: 'transaction',
+    title: '事务提交：BEGIN + INSERT + COMMIT',
+    difficulty: 'medium',
+    intro: '<b>事务</b>把一组 SQL 打包成"要么全成、要么全废"的原子单元。语法三步：<code>BEGIN;</code> 开启事务 → 执行 SQL → <code>COMMIT;</code> 提交生效。<span style="color:#7d4e00">MySQL 默认 autocommit，需 START TRANSACTION / BEGIN 显式开启；SQL Server 用 BEGIN TRANSACTION；SQLite（本页）直接 BEGIN。</span>',
+    imper: '用事务往 <code>department</code> 表插入一个"<b>研发部</b>"（department_id = 6）。完整事务：<b>BEGIN → INSERT → COMMIT</b>。',
+    starter: `BEGIN;
+-- 插入研发部
+COMMIT;`,
+    answer: `BEGIN;
+INSERT INTO department VALUES (6, '研发部');
+COMMIT;`,
+    hints: [
+      'BEGIN 开启事务，COMMIT 提交，中间写要执行的 INSERT。',
+      '语法顺序：<code>BEGIN; INSERT ...; COMMIT;</code>。',
+    ],
+    verify: { targetTable: 'department', orderBy: 'department_id', compareMode: 'full' },
+  },
+  {
+    id: 'M13',
+    group: 'transaction',
+    title: '事务回滚：时光倒流',
+    difficulty: 'medium',
+    intro: '<b>ROLLBACK</b> 用于撤销 BEGIN 之后的所有操作，让数据库回到 BEGIN 之前的状态。教学价值极高：亲手体验"时光倒流"。<div class="note" style="margin-top:6px">📌 <b>关键前提</b>：必须先写 BEGIN，否则 UPDATE 直接生效（autocommit 模式），ROLLBACK 救不回来。MySQL 默认 autocommit，SQL Server 默认非 autocommit 但语法不同（用 BEGIN TRANSACTION / ROLLBACK TRAN）。</div>',
+    imper: '用事务演示"时光倒流"：<b>BEGIN → UPDATE 把 employee_id = 100 的薪资改为 99999 → ROLLBACK</b>。最终 100 号员工的薪资应该<b>保持不变</b>（还是 15000）。',
+    starter: `BEGIN;
+-- UPDATE ...
+ROLLBACK;`,
+    answer: `BEGIN;
+UPDATE employee SET salary = 99999 WHERE employee_id = 100;
+ROLLBACK;`,
+    hints: [
+      '关键：必须有 BEGIN，否则 UPDATE 直接生效无法回滚。',
+      'ROLLBACK 撤销 BEGIN 到 ROLLBACK 之间的所有操作。',
+      '最终表数据与初始状态一致。',
+    ],
+    verify: { targetTable: 'employee', orderBy: 'employee_id', compareMode: 'full' },
+  },
+  {
+    id: 'M14',
+    group: 'transaction',
+    title: '转账场景：两条 UPDATE 原子化',
+    difficulty: 'hard',
+    intro: '事务的经典案例是<b>转账</b>：从 A 账户扣钱、向 B 账户加钱，必须<b>原子化</b>（要么都成功、要么都不做）。如果中间崩了，不能"钱扣了但对方没收到"。<span style="color:#7d4e00">生产系统中事务 + 异常捕获 = 业务正确性的基石。</span>',
+    imper: '模拟一笔内部转账：从 employee_id = 101 的薪资中<b>扣除 3000</b>，同时把 employee_id = 105 的薪资<b>增加 3000</b>。两条 UPDATE 必须在<b>同一事务</b>中（BEGIN + 两条 UPDATE + COMMIT）。',
+    starter: `BEGIN;
+-- 扣 101
+-- 加 105
+COMMIT;`,
+    answer: `BEGIN;
+UPDATE employee SET salary = salary - 3000 WHERE employee_id = 101;
+UPDATE employee SET salary = salary + 3000 WHERE employee_id = 105;
+COMMIT;`,
+    hints: [
+      '两条 UPDATE 必须用 BEGIN ... COMMIT 包住。',
+      '两条 UPDATE 分别锁定 employee_id = 101 / 105，用 salary ± 3000 计算新值。',
+    ],
+    verify: { targetTable: 'employee', orderBy: 'employee_id', compareMode: 'full' },
+  },
+  {
+    id: 'M15',
+    group: 'transaction',
+    title: '批量插入 + 事务保护',
+    difficulty: 'medium',
+    intro: '批量数据导入用事务保护：任一条 INSERT 报错，整批回滚；全部成功，统一提交。既<b>保证数据一致性</b>，又能<b>提高性能</b>（SQL 引擎不用每条都强制刷盘）。',
+    imper: '用事务一次性向 <code>project</code> 表<b>插入 5 行</b>新项目：<br>① (1007, &#39;海外市场拓展&#39;, 250000)<br>② (1008, &#39;校园招聘计划&#39;, 80000)<br>③ (1009, &#39;智能客服升级&#39;, 180000)<br>④ (1010, &#39;年度战略会议&#39;, 120000)<br>⑤ (1011, &#39;办公环境改造&#39;, 95000)<br>事务用 BEGIN + INSERT + COMMIT 包住。',
+    starter: `BEGIN;
+INSERT INTO project VALUES ...;
+INSERT INTO project VALUES ...;
+-- 再补 3 条
+COMMIT;`,
+    answer: `BEGIN;
+INSERT INTO project VALUES (1007, '海外市场拓展', 250000);
+INSERT INTO project VALUES (1008, '校园招聘计划', 80000);
+INSERT INTO project VALUES (1009, '智能客服升级', 180000);
+INSERT INTO project VALUES (1010, '年度战略会议', 120000);
+INSERT INTO project VALUES (1011, '办公环境改造', 95000);
+COMMIT;`,
+    hints: [
+      '5 条 INSERT 可以用 5 个独立 INSERT 语句（每条一行），也可以用一条 INSERT + 5 组 VALUES（M03 风格）—— 任选一种。',
+      '关键：整个批次必须被 BEGIN ... COMMIT 包住。',
+    ],
+    verify: { targetTable: 'project', orderBy: 'project_id', compareMode: 'full' },
+  },
+];
+
+
+// ============ 全局状态 ============
+let SQL, db;
+let currentGroup = GROUPS[0].key;
+let progress = JSON.parse(localStorage.getItem('sqlplay_dml_progress_v1') || '{}');
+
+// ============ 初始化 ============
+async function init() {
+  try {
+    SQL = await initSqlJs({ locateFile: f => `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}` });
+    resetDB(true);
+    setStatus('ready', '就绪 · SQLite in-browser');
+    renderNav();
+    renderMain(currentGroup);
+    updateProgress();
+  } catch (e) {
+    setStatus('error', '加载失败: ' + e.message);
+    console.error(e);
+  }
+}
+
+function setStatus(cls, text) {
+  const el = document.getElementById('status-badge');
+  el.className = cls;
+  el.textContent = text;
+}
+
+function resetDB(silent) {
+  if (!silent) {
+    if (!confirm('此操作会清除所有表数据并恢复到初始状态：12 员工 / 5 部门 / 6 项目 + 空 employee_archive。你之前的 INSERT / UPDATE / DELETE 都会被撤销（进度记录保留）。确认重置？')) return;
+  }
+  if (db) db.close();
+  db = new SQL.Database();
+  db.run(INIT_SQL);
+  if (!silent) {
+    alert('✓ 初始数据已重置。employee (12 行) / department (5 行) / project (6 行) / employee_archive (0 行) 已恢复到初始状态。');
+    // 重置后刷新表预览
+    renderMain(currentGroup);
+  }
+}
+
+// ============ 侧边栏导航 ============
+function renderNav() {
+  const container = document.getElementById('nav-list');
+  let html = '';
+  GROUPS.forEach(g => {
+    const groupPassed = LESSONS.filter(L => L.group === g.key && progress[L.id] === 'passed').length;
+    const groupTotal = LESSONS.filter(L => L.group === g.key).length;
+    html += `<div class="lesson-group ${g.key === currentGroup ? 'active' : ''}" onclick="selectGroup('${g.key}')">
+      <span>${g.icon}</span>
+      <span>${g.title}</span>
+      <span style="margin-left:auto;font-size:11px;color:#8b949e;font-weight:400;">${groupPassed}/${groupTotal}</span>
+    </div>`;
+    if (g.key === currentGroup) {
+      LESSONS.filter(L => L.group === g.key).forEach(L => {
+        const state = progress[L.id] || 'none';
+        html += `<div class="lesson-item ${state}" onclick="scrollToQu('${L.id}')">
+          <span class="lesson-num">${L.id}</span>
+          <span class="title-text">${L.title}</span>
+          <span class="status-dot"></span>
+        </div>`;
+      });
+    }
+  });
+  container.innerHTML = html;
+}
+
+function selectGroup(key) {
+  currentGroup = key;
+  renderNav();
+  renderMain(key);
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function scrollToQu(id) {
+  const el = document.getElementById('qu-' + id);
+  if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+// ============ 主区渲染 ============
+function renderMain(groupKey) {
+  const g = GROUPS.find(x => x.key === groupKey);
+  const lessons = LESSONS.filter(L => L.group === groupKey);
+  const main = document.getElementById('main-content');
+
+  let html = `
+    <div class="group-header">
+      <h1>${g.icon} ${g.title}</h1>
+      <div class="subtitle">${g.subtitle}</div>
+    </div>
+    ${renderDBPreview(g.tables)}
+  `;
+
+  lessons.forEach(L => {
+    html += renderQu(L);
+  });
+
+  main.innerHTML = html;
+
+  // 绑定每题的事件
+  lessons.forEach(L => bindQuEvents(L));
+}
+
+// ============ 顶部数据表预览 ============
+function renderDBPreview(tables) {
+  const tabs = tables.map((t, i) =>
+    `<div class="tab ${i === 0 ? 'active' : ''}" onclick="switchDBTab('${t}', this)">${t}</div>`
+  ).join('');
+  return `
+    <div class="db-preview">
+      <div class="db-preview-header">
+        <span>📊 数据表预览（本节涉及的表，共 ${tables.length} 张）</span>
+        <div class="tabs">${tabs}</div>
+      </div>
+      <div class="db-preview-body" id="db-preview-body">${renderTablePreview(tables[0])}</div>
+    </div>
+  `;
+}
+
+function switchDBTab(t, el) {
+  el.parentNode.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('db-preview-body').innerHTML = renderTablePreview(t);
+}
+
+function renderTablePreview(t) {
+  try {
+    // DML 页面主要展示表的当前数据（数据 first），schema 折叠为次要信息
+    // 先看这个对象是表还是视图
+    const kindRes = db.exec(`SELECT type FROM sqlite_master WHERE name='${t}';`);
+    if (!kindRes.length) return `<div style="padding:16px;color:#cf222e">⚠️ 表 <code>${escapeHtml(t)}</code> 不存在（可能已被 DROP / DELETE 空，可点侧边栏"↺ 重置初始数据"恢复）</div>`;
+
+    // 读 schema 用于顶部小标题 + 折叠区
+    const info = db.exec(`SELECT cid, name, type, "notnull", "dflt_value", pk FROM pragma_table_info('${t}') ORDER BY cid;`);
+    const colCount = info.length ? info[0].values.length : 0;
+
+    // 读数据（初始 employee 12 行，都展示；其他表按数据条数展示）
+    const dataRes = db.exec(`SELECT * FROM ${t} LIMIT 12`);
+    const countRes = db.exec(`SELECT COUNT(*) FROM ${t};`);
+    const rowCount = countRes.length ? countRes[0].values[0][0] : 0;
+
+    // 顶部标题：表名 + 列数 + 行数
+    let html = `<div style="padding:6px 12px;background:#f6f8fa;font-size:12px;color:#57606a;border-bottom:1px solid #eaecef">📊 <b>${escapeHtml(t)}</b> 数据（${colCount} 列，共 ${rowCount} 行${rowCount > 12 ? '，仅显示前 12 行' : ''}）</div>`;
+
+    // 主体：数据表格
+    if (rowCount === 0 || !dataRes.length) {
+      html += `<div style="padding:20px;color:#8b949e;text-align:center;font-size:13px">📭 表 <b>${escapeHtml(t)}</b> 当前为空（0 行）</div>`;
+    } else {
+      html += renderPreviewRows(dataRes[0].columns, dataRes[0].values);
+    }
+
+    // 底部：schema 折叠区（次要信息）
+    if (info.length) {
+      let schemaHtml = '<table><thead><tr>';
+      ['#', 'name', 'type', 'notnull', 'dflt_value', 'pk'].forEach(c => { schemaHtml += `<th>${c}</th>`; });
+      schemaHtml += '</tr></thead><tbody>';
+      info[0].values.forEach(row => {
+        const [cid, name, type, notnull, dflt, pk] = row;
+        schemaHtml += `<tr>
+          <td class="r">${cid}</td>
+          <td><b>${escapeHtml(String(name))}</b></td>
+          <td style="color:#953800">${escapeHtml(String(type || ''))}</td>
+          <td class="r">${notnull ? '<span style="color:#cf222e">1</span>' : '0'}</td>
+          <td>${dflt === null ? '<i style="color:#8b949e">-</i>' : escapeHtml(String(dflt))}</td>
+          <td class="r">${pk ? `<span style="color:#0969da;font-weight:600">${pk}</span>` : '0'}</td>
+        </tr>`;
+      });
+      schemaHtml += '</tbody></table>';
+      html += `<details style="border-top:1px solid #eaecef;padding:0"><summary style="padding:6px 12px;background:#fafbfc;font-size:12px;color:#57606a;cursor:pointer">📐 查看表结构 schema</summary><div>${schemaHtml}</div></details>`;
+    }
+
+    return html;
+  } catch (e) {
+    return `<div style="padding:20px;color:#cf222e">读取失败: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderPreviewRows(columns, values) {
+  const shown = values.slice(0, 12);
+  let html = '<table><thead><tr>';
+  columns.forEach(c => { html += `<th>${escapeHtml(c)}</th>`; });
+  html += '</tr></thead><tbody>';
+  shown.forEach(row => {
+    html += '<tr>';
+    row.forEach(v => {
+      const isNum = typeof v === 'number';
+      const cls = isNum ? ' class="r"' : '';
+      html += `<td${cls}>${v === null ? '<i style="color:#8b949e">NULL</i>' : escapeHtml(String(v))}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  if (values.length > shown.length) {
+    html += `<div style="padding:6px 12px;color:#8b949e;font-size:11px;">…共 ${values.length} 行，仅显示前 ${shown.length} 行</div>`;
+  }
+  return html;
+}
+
+// ============ 题目卡片渲染 ============
+function renderQu(L) {
+  const state = progress[L.id] || 'none';
+  const stateIcon = state === 'passed' ? '✅' : (state === 'attempted' ? '🟠' : '');
+  return `
+    <div class="qu" id="qu-${L.id}">
+      <h2>
+        <span class="qid">${L.id}</span>
+        <span>${L.title}</span>
+        <span class="badge ${L.difficulty}">${difficultyLabel(L.difficulty)}</span>
+        <span style="margin-left:auto;font-size:14px">${stateIcon}</span>
+      </h2>
+      <div class="intro">${L.intro}</div>
+      <div class="imper">🎯 ${L.imper}</div>
+      ${L.note ? `<div class="note">📌 ${L.note}</div>` : ''}
+      <div class="editor-wrap">
+        <textarea id="sql-${L.id}" spellcheck="false">${escapeHtml(L.starter)}</textarea>
+        <button class="reset-starter" onclick="resetStarter('${L.id}')" title="恢复起手 SQL">↺ 起手</button>
+      </div>
+      <div class="qu-actions">
+        <button class="blue" onclick="runQu('${L.id}')">▶ 运行</button>
+        <button class="primary" onclick="checkQu('${L.id}')">✓ 对答案</button>
+        <button class="ghost" onclick="clearQu('${L.id}')">🗑 清空</button>
+      </div>
+      <div class="feedback" id="feedback-${L.id}"></div>
+      <div class="result-box" id="result-${L.id}">
+        <div class="result-header">
+          <span id="result-title-${L.id}">运行结果</span>
+          <span id="result-meta-${L.id}"></span>
+        </div>
+        <div class="result-body" id="result-body-${L.id}"></div>
+      </div>
+      ${(() => {
+        const hintsArr = L.hints || (L.hint ? [L.hint] : ['独立思考一下~']);
+        const total = hintsArr.length;
+        if (total <= 1) {
+          return `<details class="hint-block"><summary>💡 提示</summary><div>${hintsArr[0]}</div></details>`;
+        }
+        const items = hintsArr.map((h, i) => `<div class="hint-item" id="hint-item-${L.id}-${i}"${i > 0 ? ' style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #ffdfb5"' : ''}><b>提示 ${i + 1}：</b>${h}</div>`).join('');
+        return `<details class="hint-block">
+        <summary>💡 分级提示 · <span id="hint-shown-${L.id}">1</span>/${total}</summary>
+        <div>
+          ${items}
+          <button id="hint-more-${L.id}" onclick="showNextHint('${L.id}', ${total})" style="margin-top:10px; font-size:12px; padding:4px 10px; background:#fff; border:1px solid #ffdfb5; color:#953800; border-radius:4px; cursor:pointer;">👇 继续查看下一条提示</button>
+        </div>
+      </details>`;
+      })()}
+      <details class="ans-block">
+        <summary>👀 参考答案</summary>
+        <div>
+          <div id="ans-warn-${L.id}" style="padding:4px 0;">
+            <div style="color:#57606a; font-size:12px; margin-bottom:6px;">⚠️ 看答案后就不算你独立完成了哦～建议先按提示多试几次</div>
+            <button onclick="revealAnswer('${L.id}')" style="font-size:12px; padding:4px 12px; background:#0969da; color:white; border:none; border-radius:4px; cursor:pointer;">我已知晓，展示答案</button>
+          </div>
+          <pre id="ans-code-${L.id}" style="display:none">${escapeHtml(L.answer)}</pre>
+        </div>
+      </details>
+    </div>
+  `;
+}
+
+function bindQuEvents(L) {
+  const ta = document.getElementById('sql-' + L.id);
+  if (!ta) return;
+  // Tab 缩进
+  ta.addEventListener('keydown', function(e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const s = this.selectionStart, en = this.selectionEnd;
+      this.value = this.value.substring(0, s) + '  ' + this.value.substring(en);
+      this.selectionStart = this.selectionEnd = s + 2;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      runQu(L.id);
+    }
+  });
+}
+
+function difficultyLabel(d) {
+  return { easy: '简单', medium: '中等', hard: '困难' }[d] || d;
+}
+
+// ============ 每题的运行/对答/清空 ============
+function getSQL(qid) {
+  return document.getElementById('sql-' + qid).value.trim();
+}
+
+function runQu(qid) {
+  const L = LESSONS.find(x => x.id === qid);
+  const sql = getSQL(qid);
+  if (!sql) { showQuFeedback(qid, 'fail', '请先输入 SQL 语句。'); return; }
+  const box = document.getElementById('result-' + qid);
+  const body = document.getElementById('result-body-' + qid);
+  const title = document.getElementById('result-title-' + qid);
+  const meta = document.getElementById('result-meta-' + qid);
+  hideQuFeedback(qid);
+  box.classList.add('show');
+
+  // DML 特殊逻辑：每次点"运行"都在临时 db 上跑（clone 自主 db 的初始快照），
+  // 主 db 保持不变，学生可反复 INSERT / UPDATE / DELETE 试错，不用手动 reset。
+  let tmpDB;
+  try {
+    tmpDB = new SQL.Database(db.export());
+  } catch (e) {
+    // 兜底：直接用 INIT_SQL 重建一个
+    tmpDB = new SQL.Database();
+    tmpDB.run(INIT_SQL);
+  }
+
+  try {
+    const t0 = performance.now();
+    const results = tmpDB.exec(sql);
+    const dt = (performance.now() - t0).toFixed(1);
+    title.textContent = '✓ 运行成功';
+
+    // 主体：展示 SQL 的直接返回（若有）
+    let mainHtml = '';
+    if (results.length) {
+      mainHtml = results.map(r => renderResultTable(r.columns, r.values)).join('');
+    } else {
+      mainHtml = '<div style="padding:14px;color:#6e7781;text-align:center;font-size:13px">✓ 执行成功，无返回结果（INSERT / UPDATE / DELETE / 事务 语句正常表现）</div>';
+    }
+
+    // DML 加值：展示目标表在临时 db 中跑完后的当前状态，让学生直观感受变化
+    let verifyHtml = '';
+    if (L && L.verify && L.verify.targetTable) {
+      try {
+        const vsql = `SELECT * FROM ${L.verify.targetTable} ORDER BY ${L.verify.orderBy}`;
+        const vr = tmpDB.exec(vsql);
+        if (vr.length && vr[0].values.length) {
+          verifyHtml = `
+            <div style="padding:8px 12px;background:#dafbe1;border-top:1px solid #b4e5c1;border-bottom:1px solid #b4e5c1;font-size:12px;color:#116329">
+              🔍 <b>${escapeHtml(L.verify.targetTable)}</b> 表当前状态（跑完你的 SQL 后，共 ${vr[0].values.length} 行）
+            </div>` + renderResultTable(vr[0].columns, vr[0].values, 20);
+        } else {
+          verifyHtml = `<div style="padding:8px 12px;background:#fff8c5;border-top:1px solid #eac54f;border-bottom:1px solid #eac54f;font-size:12px;color:#7d4e00">🔍 目标表 <b>${escapeHtml(L.verify.targetTable)}</b> 跑完后为空（0 行）—— 这是 M11 清表题的正常表现。</div>`;
+        }
+      } catch (ve) {
+        verifyHtml = `<div style="padding:8px 12px;background:#ffebe9;border-top:1px solid #ffa198;font-size:12px;color:#cf222e">🔍 目标表读取失败：${escapeHtml(ve.message)}</div>`;
+      }
+    }
+    body.innerHTML = mainHtml + verifyHtml;
+    meta.textContent = `${dt}ms · 临时 db（不影响主库）`;
+
+    // 标记为尝试过（真正 pass 由 checkQu 判定）
+    if (progress[qid] !== 'passed') {
+      progress[qid] = 'attempted';
+      saveProgress(); renderNav(); updateProgress();
+    }
+    // 主 db 未变，不用刷新顶部数据表预览
+  } catch (e) {
+    title.textContent = '✗ 语法错误';
+    meta.textContent = '';
+    body.innerHTML = `<div class="err-msg">${escapeHtml(e.message)}</div>`;
+    showQuFeedback(qid, 'fail', '❌ SQL 报错，请检查语法。');
+  } finally {
+    if (tmpDB) tmpDB.close();
+  }
+}
+
+// DML 对答案：两个独立 db 各自从 INIT_SQL 初始状态出发，学生 SQL 与参考答案分别跑，
+// 然后各自 dump `SELECT * FROM 目标表 ORDER BY 主键`，逐行逐列对比。
+// 好处：不污染主 db；学生反复"对答案"总是从相同起点判定；INSERT 不会因主键冲突报错。
+function runInFreshDB(setupSqls) {
+  const tmp = new SQL.Database();
+  tmp.run(INIT_SQL);
+  for (const s of setupSqls) {
+    tmp.run(s);  // 抛错让上层 catch
+  }
+  return tmp;
+}
+
+function checkQu(qid) {
+  const L = LESSONS.find(x => x.id === qid);
+  const sql = getSQL(qid);
+  if (!sql) { showQuFeedback(qid, 'fail', '请先输入 SQL 语句。'); return; }
+  if (!L.verify || !L.verify.targetTable) { showQuFeedback(qid, 'fail', '⚠️ 本题未配置 verify.targetTable，暂无法自动判分。'); return; }
+
+  // 学生 & 参考答案分别在独立 db 里跑
+  let userDB, refDB;
+  try { userDB = runInFreshDB([sql]); }
+  catch (e) {
+    showQuFeedback(qid, 'fail', '❌ 你的 SQL 报错：' + escapeHtml(e.message));
+    return;
+  }
+  try { refDB = runInFreshDB([L.answer]); }
+  catch (e) {
+    showQuFeedback(qid, 'fail', '⚠️ 参考答案执行失败：' + escapeHtml(e.message));
+    userDB.close();
+    return;
+  }
+
+  // 双方各 dump 目标表当前状态
+  const dumpSQL = `SELECT * FROM ${L.verify.targetTable} ORDER BY ${L.verify.orderBy}`;
+  let userDump, refDump;
+  try { userDump = userDB.exec(dumpSQL); }
+  catch (e) {
+    showQuFeedback(qid, 'fail', `❌ 你的 SQL 跑完后，读取 <code>${escapeHtml(L.verify.targetTable)}</code> 表失败（可能表被误删了）：` + escapeHtml(e.message));
+    userDB.close(); refDB.close();
+    return;
+  }
+  try { refDump = refDB.exec(dumpSQL); }
+  catch (e) {
+    showQuFeedback(qid, 'fail', '⚠️ 参考答案的目标表读取失败：' + escapeHtml(e.message));
+    userDB.close(); refDB.close();
+    return;
+  }
+
+  // 展示学生的目标表状态
+  const box = document.getElementById('result-' + qid);
+  const body = document.getElementById('result-body-' + qid);
+  const title = document.getElementById('result-title-' + qid);
+  const meta = document.getElementById('result-meta-' + qid);
+  box.classList.add('show');
+  const userRowCnt = userDump.length ? userDump[0].values.length : 0;
+  const refRowCnt = refDump.length ? refDump[0].values.length : 0;
+  if (userDump.length) {
+    body.innerHTML = `<div style="padding:6px 12px;background:#f6f8fa;border-bottom:1px solid #eaecef;font-size:12px;color:#57606a">🔍 你的 <b>${escapeHtml(L.verify.targetTable)}</b> 表跑完后（${userRowCnt} 行）</div>` + renderResultTable(userDump[0].columns, userDump[0].values, 20);
+  } else {
+    body.innerHTML = `<div style="padding:12px;color:#6e7781">🔍 你的 <b>${escapeHtml(L.verify.targetTable)}</b> 表跑完后为空（0 行）</div>`;
+  }
+  title.textContent = '你的最终数据';
+  meta.textContent = `${userRowCnt} 行`;
+
+  const cmp = compareResults(userDump, refDump, true); // DML 用 strictOrder（orderBy 已保证顺序）
+  if (cmp.pass) {
+    showQuFeedback(qid, 'pass', `✅ <b>通过！</b> 你的 <code>${escapeHtml(L.verify.targetTable)}</code> 表数据与参考答案完全一致（${userRowCnt} 行）。`);
+    progress[qid] = 'passed';
+    saveProgress(); renderNav(); updateProgress();
+    const iconEl = document.querySelector(`#qu-${qid} h2 > span:last-child`);
+    if (iconEl) iconEl.textContent = '✅';
+  } else {
+    // 附加参考答案的 dump 供对照
+    if (refDump.length) {
+      body.innerHTML += `<div style="padding:6px 12px;background:#ddf4ff;border-top:1px solid #54aeff;border-bottom:1px solid #54aeff;font-size:12px;color:#0550ae">📖 参考答案的 <b>${escapeHtml(L.verify.targetTable)}</b> 表（${refRowCnt} 行，供对照）</div>` + renderResultTable(refDump[0].columns, refDump[0].values, 20);
+    } else {
+      body.innerHTML += `<div style="padding:8px 12px;background:#ddf4ff;border-top:1px solid #54aeff;font-size:12px;color:#0550ae">📖 参考答案跑完后 <b>${escapeHtml(L.verify.targetTable)}</b> 表应为空（0 行）</div>`;
+    }
+    showQuFeedback(qid, 'fail', `❌ <b>未通过。</b> ${cmp.msg}`);
+    if (progress[qid] !== 'passed') {
+      progress[qid] = 'attempted';
+      saveProgress(); renderNav(); updateProgress();
+    }
+  }
+
+  userDB.close();
+  refDB.close();
+}
+
+function clearQu(qid) {
+  document.getElementById('sql-' + qid).value = '';
+  hideQuFeedback(qid);
+  document.getElementById('result-' + qid).classList.remove('show');
+}
+
+function resetStarter(qid) {
+  const L = LESSONS.find(x => x.id === qid);
+  document.getElementById('sql-' + qid).value = L.starter;
+  hideQuFeedback(qid);
+}
+
+function showQuFeedback(qid, cls, msg) {
+  const el = document.getElementById('feedback-' + qid);
+  el.className = 'feedback show ' + cls;
+  el.innerHTML = msg;
+}
+function hideQuFeedback(qid) {
+  document.getElementById('feedback-' + qid).className = 'feedback';
+}
+
+// ============ 结果表渲染 ============
+function renderResultTable(columns, values, maxRows) {
+  const rows = maxRows ? values.slice(0, maxRows) : values;
+  const more = maxRows && values.length > maxRows ? `<div style="padding:6px;color:#8b949e;font-size:11px;text-align:center;">…共 ${values.length} 行，仅显示前 ${maxRows} 行</div>` : '';
+  let html = '<table class="result"><thead><tr>';
+  columns.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
+  html += '</tr></thead><tbody>';
+  rows.forEach(row => {
+    html += '<tr>';
+    row.forEach(v => {
+      html += v === null ? '<td class="null">NULL</td>' : `<td>${escapeHtml(String(v))}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>' + more;
+  return html;
+}
+
+// ============ 比较 ============
+function compareResults(userRes, refRes, strictOrder) {
+  if (!userRes.length && !refRes.length) return { pass: true, msg: '双方均无返回。' };
+  if (!userRes.length) return { pass: false, msg: '你的 SQL 没有返回结果集。' };
+  if (!refRes.length) return { pass: false, msg: '参考答案无返回，但你的有。' };
+  const u = userRes[0], r = refRes[0];
+  if (u.columns.length !== r.columns.length) return { pass: false, msg: `列数不一致：你 ${u.columns.length} 列，期望 ${r.columns.length} 列。` };
+  if (u.values.length !== r.values.length) return { pass: false, msg: `行数不一致：你 ${u.values.length} 行，期望 ${r.values.length} 行。` };
+  const uv = strictOrder ? u.values : sortRows(u.values);
+  const rv = strictOrder ? r.values : sortRows(r.values);
+  for (let i = 0; i < uv.length; i++) {
+    for (let j = 0; j < uv[i].length; j++) {
+      const a = uv[i][j], b = rv[i][j];
+      if (typeof a === 'number' && typeof b === 'number') {
+        if (Math.abs(a - b) > 0.001) return { pass: false, msg: `第 ${i+1} 行第 ${j+1} 列：你=${a}，期望=${b}。` };
+      } else if (String(a ?? '') !== String(b ?? '')) {
+        const ordNote = strictOrder ? '（本题要求严格按 ORDER BY 排序）' : '';
+        return { pass: false, msg: `第 ${i+1} 行第 ${j+1} 列${ordNote}：你="${a}"，期望="${b}"。` };
+      }
+    }
+  }
+  return { pass: true, msg: `列数 ${u.columns.length}，行数 ${u.values.length}，全部匹配。` };
+}
+
+function sortRows(rows) {
+  return rows.slice().sort((a, b) => {
+    for (let i = 0; i < a.length; i++) {
+      const av = String(a[i] ?? ''), bv = String(b[i] ?? '');
+      if (av < bv) return -1;
+      if (av > bv) return 1;
+    }
+    return 0;
+  });
+}
+
+// ============ 进度 ============
+function saveProgress() { localStorage.setItem('sqlplay_dml_progress_v1', JSON.stringify(progress)); }
+function updateProgress() {
+  const passed = Object.values(progress).filter(v => v === 'passed').length;
+  document.getElementById('progress-text').textContent = `进度 ${passed} / ${LESSONS.length}`;
+  document.getElementById('progress-bar-inner').style.width = (passed / LESSONS.length * 100) + '%';
+}
+function resetProgress() {
+  if (!confirm('确定清除所有进度？（数据库不受影响）')) return;
+  progress = {}; saveProgress(); renderNav(); updateProgress();
+  renderMain(currentGroup); // 刷新卡片状态图标
+}
+
+// ============ 工具 ============
+function showNextHint(qid, total) {
+  const shownEl = document.getElementById('hint-shown-' + qid);
+  if (!shownEl) return;
+  let shown = parseInt(shownEl.textContent);
+  if (shown < total) {
+    const nextItem = document.getElementById(`hint-item-${qid}-${shown}`);
+    if (nextItem) nextItem.style.display = '';
+    shown++;
+    shownEl.textContent = shown;
+    if (shown >= total) {
+      const btn = document.getElementById('hint-more-' + qid);
+      if (btn) btn.style.display = 'none';
+    }
+  }
+}
+
+function revealAnswer(qid) {
+  const warn = document.getElementById('ans-warn-' + qid);
+  const code = document.getElementById('ans-code-' + qid);
+  if (warn) warn.style.display = 'none';
+  if (code) code.style.display = '';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+init();
+</script>
+</body>
+</html>
