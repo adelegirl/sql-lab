@@ -77,7 +77,7 @@ AIGC:
 
 | 版本 | 里程碑 | 备注 |
 |---|---|---|
-| v0.5 | SQLZoo 中文版 25 题 | 初版单页，老 repo `adelegirl/sql-playground` 冻结留念 |
+| v0.5 |  中文版 25 题 | 初版单页，老 repo `adelegirl/sql-playground` 冻结留念 |
 | v0.6 | 扩展到 50 题 | 独立业务场景 employee/department/project |
 | v0.7 | 拆分三页（index + ddl + dml） | 双通路上线 GitHub Pages + EdgeOne |
 | v0.8 | 新增 DCL 页面，四页齐活 | 主题色统一 GitHub 蓝 `#0969da` |
@@ -88,9 +88,9 @@ AIGC:
 
 ## 📝 Credits
 
-- 查询题库中文改编自 [SQLZoo](https://sqlzoo.net/)
-- 教学场景与业务需求：上海电力大学《数据库原理及应用》
-- 教材参考：赵明渊《数据库原理与应用(SQL Server)》电子工业出版社 2019
+- 查询题库中文改编自 
+- 教学场景与业务需求：上海电力大学 经济与管理学院 数据库原理及应用 课程
+- 
 
 ---
 
