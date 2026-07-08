@@ -1,0 +1,3065 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL 练习场 · ER 建模 · v0.14</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f6f8fa;
+    color: #24292f;
+    font-size: 14px;
+  }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ============ Header ============ */
+  header {
+    background: linear-gradient(90deg, #0969da 0%, #218bff 100%);
+    color: white;
+    padding: 10px 24px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: 48px;
+  }
+  header h1 { margin: 0; font-size: 17px; font-weight: 600; }
+  header h1 .page-label {
+    background: rgba(255,255,255,0.22);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-left: 8px;
+    letter-spacing: 0.5px;
+  }
+  header .status { font-size: 13px; opacity: 0.95; }
+
+  /* ============ Top Nav ============ */
+  nav.topnav {
+    background: #ffffff;
+    border-bottom: 1px solid #d0d7de;
+    padding: 0 24px;
+    display: flex;
+    gap: 0;
+    position: sticky;
+    top: 48px;
+    z-index: 99;
+    height: 44px;
+    align-items: stretch;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  nav.topnav a {
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    font-size: 14px;
+    color: #57606a;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    font-weight: 500;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  nav.topnav a:hover:not(.active) { color: #0969da; text-decoration: none; }
+  nav.topnav a.active {
+    color: #0969da;
+    border-bottom-color: #0969da;
+    font-weight: 600;
+  }
+
+  /* ============ Layout ============ */
+  .layout {
+    display: grid;
+    grid-template-columns: 220px 1fr 300px;
+    min-height: calc(100vh - 92px);
+  }
+  @media (max-width: 1400px) {
+    .layout { grid-template-columns: 220px 1fr; }
+    .progress-panel { display: none !important; }
+  }
+
+  aside.sidebar {
+    background: #ffffff;
+    border-right: 1px solid #d0d7de;
+    padding: 12px 0;
+    position: sticky;
+    top: 92px;
+    height: calc(100vh - 92px);
+    overflow-y: auto;
+  }
+
+  .progress-panel {
+    background: #ffffff;
+    border-left: 1px solid #d0d7de;
+    padding: 16px;
+    position: sticky;
+    top: 92px;
+    height: calc(100vh - 92px);
+    overflow-y: auto;
+    font-size: 13px;
+  }
+  .progress-panel h3 {
+    margin: 0 0 12px; font-size: 14px; color: #24292f;
+    display: flex; align-items: center; gap: 6px;
+    padding-bottom: 10px; border-bottom: 2px solid #0969da;
+  }
+  .pp-section { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #eaecef; }
+  .pp-section:last-of-type { border-bottom: none; }
+  .pp-section-title {
+    font-size: 11px; color: #8b949e; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 10px; font-weight: 600;
+  }
+  .pp-total { text-align: center; padding: 8px 0; }
+  .pp-total-num { font-size: 34px; font-weight: 700; color: #0969da; line-height: 1; }
+  .pp-total-num .pp-slash { color: #8b949e; font-weight: 400; font-size: 22px; }
+  .pp-total-label { color: #57606a; font-size: 12px; margin-top: 4px; }
+  .pp-bar { height: 8px; background: #eaecef; border-radius: 4px; overflow: hidden; margin: 12px 0 4px; }
+  .pp-bar-fill {
+    height: 100%; background: linear-gradient(90deg, #0969da, #2da44e);
+    border-radius: 4px; transition: width 0.4s ease;
+  }
+  .pp-pct { text-align: right; font-size: 11px; color: #57606a; }
+  .pp-stat {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; font-size: 13px; color: #24292f;
+  }
+  .pp-stat-label { display: flex; align-items: center; gap: 6px; }
+  .pp-stat-value { font-weight: 600; }
+  .pp-group-wrap { margin-bottom: 8px; }
+  .pp-group {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 0; font-size: 12px; color: #24292f;
+  }
+  .pp-group-name { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+  .pp-group-name span:last-child {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pp-group-val { color: #57606a; font-size: 11px; font-family: monospace; flex-shrink: 0; margin-left: 8px; }
+  .pp-mini-bar { height: 3px; background: #eaecef; border-radius: 2px; margin-top: 2px; overflow: hidden; }
+  .pp-mini-bar-fill { height: 100%; background: #0969da; border-radius: 2px; transition: width 0.4s ease; }
+  .pp-btn {
+    width: 100%; padding: 8px; margin-bottom: 8px;
+    border: 1px solid #d0d7de; background: white; border-radius: 6px;
+    font-size: 12px; cursor: pointer; color: #24292f; transition: all 0.15s;
+  }
+  .pp-btn:hover { background: #f6f8fa; border-color: #0969da; color: #0969da; }
+  .pp-btn.danger:hover { background: #ffebe9; border-color: #cf222e; color: #cf222e; }
+  .pp-btn.primary { background: #0969da; color: #fff; border-color: #0860c8; }
+  .pp-btn.primary:hover { background: #0860c8; color: #fff; }
+
+  .progress-bar {
+    padding: 8px 16px 12px;
+    font-size: 11px;
+    color: #57606a;
+    border-bottom: 1px solid #eaecef;
+    margin-bottom: 8px;
+  }
+  .progress-fill {
+    height: 4px; background: #eaecef; border-radius: 2px;
+    overflow: hidden; margin-top: 4px;
+  }
+  .progress-fill > div {
+    height: 100%;
+    background: linear-gradient(90deg, #2da44e, #4ac26b);
+    transition: width 0.3s;
+  }
+  .lesson-group {
+    padding: 8px 16px 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #57606a;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  .lesson-group:hover { color: #0969da; }
+  .lesson-group.active { color: #0969da; }
+  .lesson-item {
+    padding: 5px 16px 5px 28px;
+    font-size: 13px;
+    color: #24292f;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.4;
+  }
+  .lesson-item:hover { background: #f6f8fa; }
+  .lesson-item .lesson-num { color: #8b949e; font-size: 11px; font-family: monospace; min-width: 32px; }
+  .lesson-item .title-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lesson-item .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #d0d7de; flex-shrink: 0;
+  }
+  .lesson-item.passed .status-dot { background: #2da44e; }
+  .lesson-item.attempted .status-dot { background: #fb8500; }
+  .tool-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #57606a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tool-item:hover { background: #f6f8fa; color: #24292f; }
+
+  /* ============ Main content ============ */
+  main {
+    padding: 24px 32px 80px;
+    max-width: 1100px;
+    width: 100%;
+  }
+  .group-header { margin-bottom: 20px; }
+  .group-header h1 {
+    font-size: 24px;
+    margin: 0 0 8px;
+    font-weight: 700;
+    color: #24292f;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #0969da;
+    display: inline-block;
+  }
+  .group-header .subtitle {
+    color: #57606a;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .group-header .cheat {
+    background: #fff8f0;
+    border: 1px solid #ffdfb5;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #7d4e00;
+    line-height: 1.7;
+  }
+  .group-header .cheat b { color: #953800; }
+
+  /* ============ Question card ============ */
+  .qu {
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    padding: 18px 20px 20px;
+  }
+  .qu-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .qu-num {
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    background: #ddf4ff;
+    color: #0550ae;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .qu-title { font-size: 16px; font-weight: 600; color: #24292f; flex: 1; }
+  .qu-diff {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    background: #f6f8fa; color: #57606a;
+  }
+  .qu-diff.easy { background: #dafbe1; color: #1a7f37; }
+  .qu-diff.medium { background: #fff8c5; color: #7d4e00; }
+  .qu-diff.hard { background: #ffebe9; color: #cf222e; }
+  .qu-state {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #f6f8fa;
+    color: #57606a;
+  }
+  .qu-state.passed { background: #dafbe1; color: #1a7f37; }
+  .qu-state.attempted { background: #fff8c5; color: #7d4e00; }
+  .qu-scenario {
+    background: #f6f8fa;
+    padding: 12px 14px;
+    border-radius: 6px;
+    line-height: 1.75;
+    margin-bottom: 12px;
+    border-left: 3px solid #0969da;
+    font-size: 13.5px;
+  }
+  .qu-scenario b { color: #0550ae; }
+  details.hint-block {
+    background: #fff8f0;
+    border: 1px solid #ffdfb5;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-size: 13px;
+  }
+  details.hint-block summary { cursor: pointer; color: #953800; font-weight: 600; }
+  details.hint-block > div { padding-top: 8px; line-height: 1.7; }
+  details.hint-block code {
+    background: #fff;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: "SF Mono", Consolas, monospace;
+    color: #cf222e;
+    font-size: 12.5px;
+  }
+
+  /* ============ ER Editor ============ */
+  .er-editor {
+    display: grid;
+    grid-template-columns: 170px 1fr;
+    gap: 10px;
+    background: #fafbfc;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .er-palette {
+    background: #fff;
+    border: 1px solid #eaecef;
+    border-radius: 6px;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 12.5px;
+  }
+  .er-palette h4 {
+    margin: 0 0 4px;
+    font-size: 12px;
+    color: #57606a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+  .er-pal-btn {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 12.5px;
+    color: #24292f;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .er-pal-btn:hover {
+    background: #ddf4ff;
+    border-color: #0969da;
+    color: #0550ae;
+  }
+  .er-pal-btn.entity   { border-left: 3px solid #0969da; }
+  .er-pal-btn.weak-ent { border-left: 3px solid #6f42c1; }
+  .er-pal-btn.rel      { border-left: 3px solid #fb8500; }
+  .er-pal-btn.weak-rel { border-left: 3px solid #d29922; }
+  .er-pal-btn.mode-link.active {
+    background: #ddf4ff;
+    border-color: #0969da;
+    color: #0550ae;
+    font-weight: 600;
+  }
+  .er-pal-hint {
+    font-size: 11px;
+    color: #8b949e;
+    line-height: 1.5;
+    padding: 4px 2px 0;
+    border-top: 1px dashed #eaecef;
+    margin-top: 4px;
+  }
+  .er-canvas-wrap {
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    overflow: auto;
+    max-height: 640px;
+    min-height: 440px;
+    position: relative;
+  }
+  .er-canvas-toolbar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 8px 10px;
+    background: #f6f8fa;
+    border-bottom: 1px solid #eaecef;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  .er-tool-btn {
+    padding: 5px 12px;
+    font-size: 12px;
+    border: 1px solid #d0d7de;
+    background: #fff;
+    border-radius: 5px;
+    cursor: pointer;
+    color: #24292f;
+  }
+  .er-tool-btn:hover { background: #f6f8fa; border-color: #0969da; color: #0969da; }
+  .er-tool-btn.primary { background: #0969da; color: #fff; border-color: #0860c8; }
+  .er-tool-btn.primary:hover { background: #0860c8; color: #fff; }
+  .er-tool-btn.danger:hover { background: #ffebe9; border-color: #cf222e; color: #cf222e; }
+  .er-tool-btn.secondary { background: #fff8f0; color: #7d4e00; border-color: #ffdfb5; }
+  .er-tool-btn.secondary:hover { background: #ffefd4; color: #953800; border-color: #f2c078; }
+  .er-mode-tag {
+    margin-left: auto;
+    font-size: 11px;
+    color: #57606a;
+    padding: 3px 8px;
+    background: #eaecef;
+    border-radius: 10px;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .er-mode-tag.linking { background: #ddf4ff; color: #0550ae; }
+  svg.er-canvas {
+    display: block;
+    background:
+      linear-gradient(#fafbfc 1px, transparent 1px) 0 0/20px 20px,
+      linear-gradient(90deg, #fafbfc 1px, transparent 1px) 0 0/20px 20px,
+      #fff;
+    background-image:
+      linear-gradient(rgba(9,105,218,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(9,105,218,.05) 1px, transparent 1px);
+    background-size: 20px 20px, 20px 20px;
+    cursor: default;
+    touch-action: none;
+  }
+  svg.er-canvas.linking { cursor: crosshair; }
+  .er-entity-rect { fill: #ddf4ff; stroke: #0969da; stroke-width: 2; }
+  .er-entity-rect.weak { fill: #fbf0ff; stroke: #6f42c1; stroke-dasharray: 6 4; }
+  .er-entity-rect.selected { stroke: #cf222e; stroke-width: 3; }
+  .er-entity-title { font-size: 13px; font-weight: 600; fill: #0550ae; }
+  .er-entity-title.weak { fill: #6f42c1; }
+  .er-attr-row { fill: #24292f; font-size: 12px; }
+  .er-attr-row.pk { text-decoration: underline; font-weight: 600; }
+  .er-rel-poly { fill: #fff3e6; stroke: #fb8500; stroke-width: 2; }
+  .er-rel-poly.weak { fill: #fff8dc; stroke: #d29922; stroke-dasharray: 6 4; }
+  .er-rel-poly.selected { stroke: #cf222e; stroke-width: 3; }
+  .er-rel-title { font-size: 12.5px; font-weight: 600; fill: #7d4e00; text-anchor: middle; dominant-baseline: middle; }
+  .er-edge-line { stroke: #57606a; stroke-width: 2; fill: none; pointer-events: stroke; }
+  .er-edge-line.hover { stroke: #0969da; stroke-width: 3; }
+  .er-edge-line.weak-line { stroke-dasharray: 6 4; }
+  .er-edge-hit { stroke: transparent; stroke-width: 12; fill: none; pointer-events: stroke; cursor: pointer; }
+  .er-card-bg { fill: #fff; stroke: #0969da; stroke-width: 1.5; rx: 8; ry: 8; }
+  .er-card-text { font-size: 12px; font-weight: 700; fill: #0550ae; text-anchor: middle; dominant-baseline: middle; cursor: pointer; user-select: none; }
+  .er-del-btn { fill: #cf222e; cursor: pointer; }
+  .er-del-btn:hover { fill: #a40e26; }
+  .er-node-group { cursor: grab; }
+  .er-node-group.dragging { cursor: grabbing; opacity: 0.85; }
+  .er-node-group.link-src .er-entity-rect,
+  .er-node-group.link-src .er-rel-poly { stroke: #1a7f37; stroke-width: 3; }
+  .er-anchor { fill: #2da44e; stroke: #fff; stroke-width: 1; opacity: 0; pointer-events: none; }
+  .er-node-group:hover .er-anchor { opacity: 0.8; }
+
+  /* Attr editor row */
+  .er-attr-editor {
+    background: #f6f8fa;
+    padding: 8px;
+    border-radius: 6px;
+    margin-top: 8px;
+    font-size: 12.5px;
+  }
+  .er-attr-editor .row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+  }
+  .er-attr-editor input[type=text] {
+    padding: 3px 6px;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 12.5px;
+    flex: 1;
+  }
+  .er-attr-editor input[type=text]:focus { outline: none; border-color: #0969da; }
+  .er-attr-editor label {
+    font-size: 11px;
+    color: #57606a;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+  }
+  .er-attr-editor button {
+    padding: 2px 6px;
+    font-size: 11px;
+    border: 1px solid #d0d7de;
+    background: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #57606a;
+  }
+  .er-attr-editor button:hover { background: #ffebe9; border-color: #cf222e; color: #cf222e; }
+  .er-attr-editor .add-btn:hover { background: #dafbe1; border-color: #1a7f37; color: #1a7f37; }
+
+  /* Judge result */
+  .er-judge-result {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    line-height: 1.7;
+  }
+  .er-judge-result.pass {
+    background: #dafbe1;
+    border: 1px solid #b5f0c1;
+    color: #1a7f37;
+  }
+  .er-judge-result.partial {
+    background: #fff8c5;
+    border: 1px solid #f0e68a;
+    color: #7d4e00;
+  }
+  .er-judge-result.fail {
+    background: #ffebe9;
+    border: 1px solid #ffcecb;
+    color: #cf222e;
+  }
+  .er-judge-result h4 { margin: 0 0 6px; font-size: 14px; }
+  .er-judge-result ul { margin: 4px 0 0 0; padding-left: 20px; }
+  .er-judge-result li { margin-bottom: 3px; }
+  .er-judge-result .metric {
+    display: inline-block; font-family: "SF Mono", Consolas, monospace;
+    padding: 1px 6px; border-radius: 4px; margin-right: 4px; font-size: 12px;
+  }
+  .er-judge-result .metric.ok { background: #b5f0c1; color: #1a7f37; }
+  .er-judge-result .metric.miss { background: #ffcecb; color: #cf222e; }
+  .er-judge-result .metric.warn { background: #f0e68a; color: #7d4e00; }
+
+  /* Reference display */
+  details.ans-block {
+    background: #ddf4ff;
+    border: 1px solid #a5d6ff;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  details.ans-block summary {
+    cursor: pointer; color: #0550ae; font-weight: 600;
+  }
+  details.ans-block .ans-body {
+    padding-top: 8px; line-height: 1.7;
+  }
+  details.ans-block .ans-body pre {
+    background: #fff;
+    padding: 8px 10px;
+    border-radius: 5px;
+    margin: 6px 0;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    color: #24292f;
+    overflow-x: auto;
+    line-height: 1.5;
+    border: 1px solid #d0d7de;
+  }
+  details.ans-block .ans-note {
+    background: #fffbe6;
+    padding: 8px 10px;
+    border-radius: 5px;
+    margin: 6px 0 0;
+    font-size: 12.5px;
+    color: #7d4e00;
+    border: 1px solid #f7e6a4;
+    line-height: 1.6;
+  }
+
+  /* ============ Modal ============ */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    min-width: 340px;
+    max-width: 460px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  }
+  .modal-card h3 {
+    margin: 0 0 10px;
+    color: #0969da;
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .modal-card .modal-desc {
+    margin: 0 0 14px;
+    color: #57606a;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .modal-card input {
+    padding: 6px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .modal-card input:focus {
+    outline: none;
+    border-color: #0969da;
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+  }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .modal-actions button {
+    padding: 5px 14px;
+    border: 1px solid #d0d7de;
+    background: #f6f8fa;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .modal-actions button:hover { background: #eaecef; }
+  .modal-actions button.blue { background: #0969da; color: white; border-color: #0860c8; }
+  .modal-actions button.blue:hover { background: #0860c8; }
+
+  /* ============ Footer ============ */
+  footer.site-footer {
+    padding: 16px 24px;
+    background: #ffffff;
+    border-top: 1px solid #d0d7de;
+    text-align: center;
+    color: #8b949e;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  footer.site-footer .footer-brand { color: #0969da; font-weight: 600; }
+  footer.site-footer a { color: #57606a; }
+
+  /* ============ 打印 ============ */
+  @media print {
+    header, nav.topnav, aside.sidebar, .progress-panel, .er-palette, .er-canvas-toolbar, details.hint-block { display: none !important; }
+    .layout { grid-template-columns: 1fr; }
+    main { max-width: 100%; padding: 20px; }
+    .qu { break-inside: avoid; box-shadow: none; }
+    .er-editor { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+
+<body>
+<header>
+  <h1>❄️ SQL 练习场 · ER 建模 <span class="page-label">ER Drag Modeler · v0.14</span></h1>
+  <div class="status">12 题 · 拖拽实体/关系 · 连线标基数 · 图结构等价判分</div>
+</header>
+
+<nav class="topnav">
+  <a href="index.html">📖 查询练习 <span style="opacity:0.6;font-size:12px;margin-left:2px">50题</span></a>
+  <a href="ddl.html">🏗️ DDL 建表 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+  <a href="dml.html">📝 DML 数据操作 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+  <a href="dcl.html">🔐 DCL 权限控制 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+  <a href="algebra.html">🧮 关系代数 <span style="opacity:0.6;font-size:12px;margin-left:2px">24题</span></a>
+  <a href="nf.html">🔍 范式训练 <span style="opacity:0.6;font-size:12px;margin-left:2px">17题</span></a>
+  <a href="er.html" class="active">🔷 ER 建模 <span style="opacity:0.7;font-size:12px;margin-left:2px">12题</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="progress-bar">
+      <span id="progress-text">进度 0 / 12</span>
+      <div class="progress-fill"><div id="progress-bar-inner" style="width:0%"></div></div>
+    </div>
+    <div id="nav-list"></div>
+    <div class="lesson-group" style="margin-top:12px; cursor:default">🛠️ 工具</div>
+    <div class="tool-item" onclick="resetProgress()" title="清除已通过/尝试过的题目记录">🧹 清除进度</div>
+    <div class="tool-item" onclick="clearAllGraphs()" title="清空所有题目已绘制的 ER 图">🗑️ 清空所有画布</div>
+  </aside>
+
+  <main id="main-content"><!-- 动态渲染 --></main>
+
+  <aside class="progress-panel">
+    <h3>📊 我的学习进度</h3>
+    <div class="pp-section">
+      <div class="pp-total">
+        <div class="pp-total-num">
+          <span id="pp-total-passed">0</span><span class="pp-slash"> / </span><span id="pp-total-total">12</span>
+        </div>
+        <div class="pp-total-label">✅ 已通过 / 总题数</div>
+      </div>
+      <div class="pp-bar"><div class="pp-bar-fill" id="pp-bar-fill" style="width:0%"></div></div>
+      <div class="pp-pct" id="pp-pct">0%</div>
+    </div>
+    <div class="pp-section">
+      <div class="pp-section-title">状态明细</div>
+      <div class="pp-stat">
+        <div class="pp-stat-label">✅ 通过</div>
+        <div class="pp-stat-value" id="pp-stat-passed">0</div>
+      </div>
+      <div class="pp-stat">
+        <div class="pp-stat-label">🟠 尝试过</div>
+        <div class="pp-stat-value" id="pp-stat-attempted">0</div>
+      </div>
+      <div class="pp-stat">
+        <div class="pp-stat-label">👀 看过答案</div>
+        <div class="pp-stat-value" id="pp-stat-viewed">0</div>
+      </div>
+    </div>
+    <div class="pp-section">
+      <div class="pp-section-title">分组进度</div>
+      <div id="pp-groups"></div>
+    </div>
+    <div class="pp-section">
+      <div class="pp-section-title">操作</div>
+      <button class="pp-btn primary" onclick="exportReport()">📥 导出学习报告</button>
+      <button class="pp-btn danger" onclick="clearAllProgress()">🗑️ 清空所有进度</button>
+    </div>
+  </aside>
+</div>
+
+<footer class="site-footer">
+  <div><span class="footer-brand">SQL 练习场 · ER 建模</span> · v0.14 · 面向非计算机专业本科生的《数据库原理及应用》配套练习</div>
+  <div style="margin-top:4px;opacity:0.8">上海电力大学 · 教材：赵明渊《数据库原理与应用（SQL Server）》电子工业出版社 2019 · 拖拽式 ER 建模器 · 图结构等价判分</div>
+</footer>
+
+<!-- 学号输入弹窗 -->
+<div id="student-id-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3>导出学习报告</h3>
+    <p class="modal-desc">请输入你的学号，用于提交作业时识别身份：</p>
+    <input id="student-id-input" type="text" placeholder="例如：20260701001" autocomplete="off" style="width:100%;margin-bottom:8px" />
+    <div class="modal-actions">
+      <button id="student-id-cancel">取消</button>
+      <button id="student-id-confirm" class="blue">提交导出</button>
+    </div>
+  </div>
+</div>
+
+<!-- 通用输入弹窗（改名 / 加属性） -->
+<div id="prompt-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3 id="prompt-title">重命名</h3>
+    <p class="modal-desc" id="prompt-desc">请输入名称：</p>
+    <input id="prompt-input" type="text" autocomplete="off" style="width:100%;margin-bottom:8px" />
+    <div id="prompt-extra" style="margin-bottom:8px;font-size:12px;color:#57606a"></div>
+    <div class="modal-actions">
+      <button id="prompt-cancel">取消</button>
+      <button id="prompt-confirm" class="blue">确定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================================================================
+// ============ 分组与题目数据 (v0.14) ============
+// 每题结构：
+//   id, group, difficulty, title,
+//   scenario: 业务场景描述（HTML）,
+//   hints: [3 条上限] ,
+//   reference: {
+//     entities: [{name, weak?, isSubclass?, attrs:[{name,pk}]}],
+//     relationships: [{name, entity1, entity2, cardinality:'1:1'|'1:N'|'M:N', weak?, attrs?}]
+//   },
+//   altReferences: [ ...同构可选方案 ],
+//   ansNote: '答案下方设计说明'
+// ==================================================================
+const GROUPS = [
+  { key:'basic',    symbol:'🌱', title:'入门 · 单实体 3 题', subtitle:'热身：把一个业务实体建成一个矩形框，掌握"实体—属性—主键"三件套。属性主键用下划线标注。' },
+  { key:'onetomany',symbol:'🔗', title:'一对多 3 题',         subtitle:'两实体 + 一菱形关系，两侧连线分别标"1"和"N"。1 端只对应 N 端多条记录，N 端反过来只归属 1 端。' },
+  { key:'manytomany',symbol:'🕸️', title:'多对多 2 题',        subtitle:'两实体之间用菱形关系相连，两侧连线都标"M"或"N"。多对多关系本身可以带自己的属性（如成绩、贡献排名）。' },
+  { key:'weak',     symbol:'🪶', title:'弱实体 2 题',         subtitle:'弱实体（虚框）自身无独立主键，依附父实体存在；弱关系（虚菱形）称"识别关系"，连线也标虚线。' },
+  { key:'inherit',  symbol:'🧬', title:'继承 2 题',           subtitle:'父实体连着若干子实体，中间用菱形关系"特化 / ISA"表示。每个子实体是父实体的特化版本，共享父实体的主键。' },
+];
+
+const LESSONS = [
+  // ============ 入门 · 单实体 3 题 ============
+  {
+    id: 'E1', group: 'basic', difficulty: 'easy',
+    title: '图书表：书号 / 书名 / 作者 / 定价',
+    scenario: '<b>业务描述</b>：某图书馆要把馆藏图书登记入库。每本书有唯一的<b>书号</b>作为编号；<b>书名</b>必填、不能为空；<b>作者</b>可为空；<b>定价</b>用两位小数存。<br><br>👉 请把这个业务抽象成一个 <b>图书</b> 实体，并把 4 个属性挂在实体上；<b>书号</b>作为主键。',
+    hints: [
+      '这题只有一个实体，图上应该只有<b>一个矩形</b>；4 个属性都挂在同一个实体上。',
+      '点击左侧"➕ 实体"添加矩形，双击矩形改名"图书"；双击可编辑属性，"➕ 属性"逐个添加。',
+      '"书号"这行要勾选<b>PK 主键</b>——判分器会检查主键标注；其他 3 个属性不勾。',
+    ],
+    reference: {
+      entities: [
+        { name: '图书', attrs: [
+          {name:'书号', pk:true},
+          {name:'书名', pk:false},
+          {name:'作者', pk:false},
+          {name:'定价', pk:false}
+        ]}
+      ],
+      relationships: []
+    },
+    ansNote: '单实体最简结构。属性名可用中文或英文（book_id / title / author / price），判分器都识别。'
+  },
+  {
+    id: 'E2', group: 'basic', difficulty: 'easy',
+    title: '员工表：工号 / 姓名 / 部门 / 入职日期',
+    scenario: '<b>业务描述</b>：公司人事部要建员工基础信息表。每位员工有唯一的<b>工号</b>；<b>姓名</b>必填；<b>部门</b>用字符串暂存部门名字；<b>入职日期</b>用日期类型。<br><br>👉 请把员工业务抽象成一个 <b>员工</b> 实体，4 个属性；<b>工号</b>作为主键。',
+    hints: [
+      '还是单实体单表建模。图上只有 EMPLOYEE 一个盒子，属性 4 个。',
+      '拖出实体 → 命名"员工" → 加属性"工号/姓名/部门/入职日期"。',
+      '主键只有<b>工号</b>一个，记得勾 PK。',
+    ],
+    reference: {
+      entities: [
+        { name: '员工', attrs: [
+          {name:'工号', pk:true},
+          {name:'姓名', pk:false},
+          {name:'部门', pk:false},
+          {name:'入职日期', pk:false}
+        ]}
+      ],
+      relationships: []
+    },
+    ansNote: '注意这里的"部门"只是员工表里的一个字符串字段，不是独立实体。M1 才拆成"部门-员工"两个实体。'
+  },
+  {
+    id: 'E3', group: 'basic', difficulty: 'easy',
+    title: '产品表：产品编号 / 名称 / 单价 / 库存',
+    scenario: '<b>业务描述</b>：电商仓库管理系统。每个产品有<b>产品编号</b>作为主键；<b>名称</b>必填；<b>单价</b>用小数；<b>库存</b>用整数。<br><br>👉 请把产品业务抽象成一个 <b>产品</b> 实体，4 个属性；<b>产品编号</b>作为主键。',
+    hints: [
+      '与 E1/E2 完全同构，还是一个实体 + 4 个属性。',
+      '实体名"产品"（或"商品"、"product"都可以）。',
+      '主键：产品编号（product_id / pid 等同义都算对）。',
+    ],
+    reference: {
+      entities: [
+        { name: '产品', attrs: [
+          {name:'产品编号', pk:true},
+          {name:'名称', pk:false},
+          {name:'单价', pk:false},
+          {name:'库存', pk:false}
+        ]}
+      ],
+      relationships: []
+    },
+    ansNote: '入门 3 题都是单实体建模，练"实体—属性—主键"3 件套的操作手感。'
+  },
+
+  // ============ 一对多 3 题 ============
+  {
+    id: 'M1', group: 'onetomany', difficulty: 'medium',
+    title: '部门(1) - 员工(N)：员工属于一个部门',
+    scenario: '<b>业务描述</b>：公司有多个<b>部门</b>，每个部门有<b>部门编号</b>和<b>部门名称</b>。每位<b>员工</b>属于且仅属于一个部门，员工自己有<b>工号</b>和<b>姓名</b>。<br><br>👉 请建 <b>2 个实体</b>（部门 / 员工），中间用<b>菱形关系</b>（如"拥有" / "属于"）连接，两侧连线分别标注 <b>1</b> 和 <b>N</b>——部门这一侧是 <b>1</b>，员工这一侧是 <b>N</b>。',
+    hints: [
+      '"一对多"读作：<b>一个</b>部门<b>拥有多个</b>员工。所以<b>部门端标 1，员工端标 N</b>。',
+      '3 个组件：部门（实体） + 拥有（关系菱形） + 员工（实体）。用"🔗 连线"模式点两个组件把它们连起来。',
+      '点击连线中点的圆形标签可以切换 1 / N / M。M1/M2/M3 都是 <b>1 : N</b>（一对多）。',
+    ],
+    reference: {
+      entities: [
+        { name: '部门', attrs: [
+          {name:'部门编号', pk:true},
+          {name:'部门名称', pk:false}
+        ]},
+        { name: '员工', attrs: [
+          {name:'工号', pk:true},
+          {name:'姓名', pk:false}
+        ]}
+      ],
+      relationships: [
+        { name:'拥有', entity1:'部门', entity2:'员工', cardinality:'1:N' }
+      ]
+    },
+    ansNote: '一对多在 ER 图里的表达就是：菱形关系两侧分别标 <b>1</b> 和 <b>N</b>，"1"这一侧是父实体（一方），"N"这一侧是子实体（多方）。关系名"拥有"、"包含"、"属于"、"含有"等都视为等价。'
+  },
+  {
+    id: 'M2', group: 'onetomany', difficulty: 'medium',
+    title: '出版社(1) - 图书(N)：一家出版社出版多本书',
+    scenario: '<b>业务描述</b>：图书出版数据库。<b>出版社</b>有 <b>出版社编号</b>（PK）和 <b>出版社名称</b>；<b>图书</b>有 <b>书号</b>（PK）、<b>书名</b>、<b>定价</b>。一本书只能属于一个出版社，一家出版社可以出版多本书。<br><br>👉 建 2 个实体 + 一个"出版"关系菱形；出版社端 1，图书端 N。',
+    hints: [
+      '与 M1 同构：<b>出版社 = "1"端父实体</b>，<b>图书 = "N"端子实体</b>。',
+      '关系名可以是"出版"、"发行"或类似动词。',
+      '连线基数：出版社侧 1，图书侧 N。',
+    ],
+    reference: {
+      entities: [
+        { name: '出版社', attrs: [
+          {name:'出版社编号', pk:true},
+          {name:'出版社名称', pk:false}
+        ]},
+        { name: '图书', attrs: [
+          {name:'书号', pk:true},
+          {name:'书名', pk:false},
+          {name:'定价', pk:false}
+        ]}
+      ],
+      relationships: [
+        { name:'出版', entity1:'出版社', entity2:'图书', cardinality:'1:N' }
+      ]
+    },
+    ansNote: '一对多的核心识别信号：一方永远只有一个 PK，被多方通过关系"共享"。ER 图上体现为菱形两端基数一个 1 一个 N。'
+  },
+  {
+    id: 'M3', group: 'onetomany', difficulty: 'medium',
+    title: '客户(1) - 订单(N)：一个客户下多份订单',
+    scenario: '<b>业务描述</b>：电商订单系统。<b>客户</b>有 <b>客户编号</b>（PK）、<b>姓名</b>、<b>电话</b>；<b>订单</b>有 <b>订单号</b>（PK）、<b>下单日期</b>、<b>订单金额</b>。一个客户可以下多份订单，每份订单归属唯一一位客户。<br><br>👉 建 2 个实体 + 一个"下单"关系菱形；客户端 1，订单端 N。',
+    hints: [
+      '第 3 道一对多，仍然是 1:N 结构。<b>客户 = 1 端</b>，<b>订单 = N 端</b>。',
+      '关系名可以是"下单"、"下订"、"订购"等。',
+      '别忘了给两侧连线标基数：客户 1，订单 N。',
+    ],
+    reference: {
+      entities: [
+        { name: '客户', attrs: [
+          {name:'客户编号', pk:true},
+          {name:'姓名', pk:false},
+          {name:'电话', pk:false}
+        ]},
+        { name: '订单', attrs: [
+          {name:'订单号', pk:true},
+          {name:'下单日期', pk:false},
+          {name:'订单金额', pk:false}
+        ]}
+      ],
+      relationships: [
+        { name:'下单', entity1:'客户', entity2:'订单', cardinality:'1:N' }
+      ]
+    },
+    ansNote: 'M1-M3 都是一对多的经典模型。做到这里应该形成条件反射：看到"一个 X 拥有多个 Y" → 两实体 + 菱形关系 + 1:N。'
+  },
+
+  // ============ 多对多 2 题 ============
+  {
+    id: 'N1', group: 'manytomany', difficulty: 'medium',
+    title: '学生 - 课程 - 选修（M:N）',
+    scenario: '<b>业务描述</b>：学校选课系统。<b>学生</b>有 <b>学号</b>（PK）、<b>姓名</b>；<b>课程</b>有 <b>课程号</b>（PK）、<b>课程名</b>、<b>学分</b>。一个学生可以选多门课，一门课可以被多位学生选。<br><br>👉 建 2 个实体 + 一个"选修"关系菱形，两侧连线都标 <b>M / N</b>；关系本身可以带一个属性"成绩"（可选加分项）。',
+    hints: [
+      '<b>多对多</b>的信号：一个 X 关联<b>多个</b> Y，一个 Y 也关联<b>多个</b> X → 两侧都标 M/N。',
+      '组件：学生（实体） + 选修（关系菱形） + 课程（实体）。学生端 M / N 都可，课程端也 M / N。判分器等价接受。',
+      '进阶：给"选修"这个关系菱形<b>本身</b>加一个属性"成绩"（在关系菱形上双击，加属性）——这是 M:N 关系带属性的经典写法。',
+    ],
+    reference: {
+      entities: [
+        { name: '学生', attrs: [
+          {name:'学号', pk:true},
+          {name:'姓名', pk:false}
+        ]},
+        { name: '课程', attrs: [
+          {name:'课程号', pk:true},
+          {name:'课程名', pk:false},
+          {name:'学分', pk:false}
+        ]}
+      ],
+      relationships: [
+        { name:'选修', entity1:'学生', entity2:'课程', cardinality:'M:N' }
+      ]
+    },
+    ansNote: '多对多 ER 图上表现为菱形两端<b>都是 M/N</b>。到关系模式转换阶段，需要额外拆一张联结表（enrollment）承载两个外键 + 关系属性 grade。这一步是 P2 阶段的内容，本题只判 ER 图。'
+  },
+  {
+    id: 'N2', group: 'manytomany', difficulty: 'medium',
+    title: '作者 - 图书 - 撰写（M:N，含贡献排名）',
+    scenario: '<b>业务描述</b>：一本书可以有多位合作作者，一位作者也可以写多本书（多对多）。<b>作者</b>有 <b>作者编号</b>（PK）、<b>作者姓名</b>；<b>图书</b>有 <b>书号</b>（PK）、<b>书名</b>。<br><br>👉 建 2 个实体 + 一个"撰写"关系菱形；两侧连线都标 <b>M / N</b>。关系本身可加"贡献排名"属性。',
+    hints: [
+      '结构和 N1 完全同构：作者 M:N 图书。',
+      '关系名可以是"撰写"、"编写"、"著作"等。',
+      '给关系本身加"贡献排名"属性（可选加分项）。',
+    ],
+    reference: {
+      entities: [
+        { name: '作者', attrs: [
+          {name:'作者编号', pk:true},
+          {name:'作者姓名', pk:false}
+        ]},
+        { name: '图书', attrs: [
+          {name:'书号', pk:true},
+          {name:'书名', pk:false}
+        ]}
+      ],
+      relationships: [
+        { name:'撰写', entity1:'作者', entity2:'图书', cardinality:'M:N' }
+      ]
+    },
+    ansNote: 'N1/N2 都是标准的多对多，形式上判分同构：两实体 + 一菱形 + M:N。教学重点是识别"关系可以有自己的属性"。'
+  },
+
+  // ============ 弱实体 2 题 ============
+  {
+    id: 'W1', group: 'weak', difficulty: 'hard',
+    title: '订单 - 订单明细：明细依附订单存在（弱实体）',
+    scenario: '<b>业务描述</b>：<b>订单</b>（强实体）有 <b>订单号</b>（PK）、<b>下单日期</b>；<b>订单明细</b>（弱实体，自己没有独立主键）用"订单号 + 行号"共同定位——<b>行号</b>只在同一订单内递增。明细还有<b>商品名</b>和<b>数量</b>。<br><br>👉 建 2 个实体：订单（普通矩形） + 订单明细（<b>虚框弱实体</b>，选左侧"➕ 弱实体"）；中间用一个 <b>虚菱形识别关系</b>（"➕ 弱关系" · "包含"）连接；订单端 1，明细端 N。',
+    hints: [
+      '<b>弱实体</b>的识别信号：脱离父实体无法唯一定位。订单明细自己没有独立 ID，所以是弱实体（虚框）。',
+      '组件：订单（普通实体） + 订单明细（<b>弱实体，用"➕ 弱实体"按钮</b>） + 一个<b>弱关系"包含"</b>（用"➕ 弱关系"按钮）。',
+      '弱实体自身可以有<b>部分主键</b>（行号），也允许勾 PK 标注。基数是 1:N（订单侧 1，明细侧 N）。',
+    ],
+    reference: {
+      entities: [
+        { name: '订单', attrs: [
+          {name:'订单号', pk:true},
+          {name:'下单日期', pk:false}
+        ]},
+        { name: '订单明细', weak: true, attrs: [
+          {name:'行号', pk:true},
+          {name:'商品名', pk:false},
+          {name:'数量', pk:false}
+        ]}
+      ],
+      relationships: [
+        { name:'包含', entity1:'订单', entity2:'订单明细', cardinality:'1:N', weak:true }
+      ]
+    },
+    ansNote: '弱实体在 ER 图上用虚线矩形框；连接弱实体的关系叫"识别关系"，用虚菱形。行号在明细自身内是"部分主键"，配合父表主键"订单号"才能构成完整键。'
+  },
+  {
+    id: 'W2', group: 'weak', difficulty: 'hard',
+    title: '员工 - 家属：家属依附员工存在（弱实体）',
+    scenario: '<b>业务描述</b>：<b>员工</b>（强实体）有 <b>工号</b>（PK）、<b>姓名</b>；每位员工可能登记若干位<b>家属</b>（弱实体）。家属没有独立编号，只在自己的员工下用<b>家属序号</b>区分。家属还有<b>家属姓名</b>和<b>关系</b>（配偶/子女）。<br><br>👉 建员工（强实体） + 家属（<b>弱实体</b>）+ 弱关系"登记"，基数 1:N。',
+    hints: [
+      '家属离开员工没意义 → <b>典型弱实体</b>。用左侧"➕ 弱实体"按钮。',
+      '关系"登记"用"➕ 弱关系"（虚线菱形）。',
+      '基数：员工端 1，家属端 N。',
+    ],
+    reference: {
+      entities: [
+        { name: '员工', attrs: [
+          {name:'工号', pk:true},
+          {name:'姓名', pk:false}
+        ]},
+        { name: '家属', weak: true, attrs: [
+          {name:'家属序号', pk:true},
+          {name:'家属姓名', pk:false},
+          {name:'关系', pk:false}
+        ]}
+      ],
+      relationships: [
+        { name:'登记', entity1:'员工', entity2:'家属', cardinality:'1:N', weak:true }
+      ]
+    },
+    ansNote: 'W1/W2 完全同构。识别关键：如果去掉父实体，这个记录就没意义了（家属离了员工无从谈起）。'
+  },
+
+  // ============ 继承 2 题 ============
+  {
+    id: 'I1', group: 'inherit', difficulty: 'hard',
+    title: '人员 → 学生 / 教师：继承（ISA）',
+    scenario: '<b>业务描述</b>：学校信息系统。<b>人员</b>（父类）有 <b>人员编号</b>（PK）、<b>姓名</b>、<b>出生日期</b>——是所有学生和教师的共同抽象。<b>学生</b>（子类）比人员多一个<b>专业</b>；<b>教师</b>（子类）多一个<b>职称</b>。<br><br>👉 建 3 个实体：人员（父类，普通实体） + 学生 + 教师（两个子类实体）；用两个"<b>特化 / ISA</b>"菱形关系连接（人员 ↔ 学生 · 人员 ↔ 教师），基数标 <b>1:1</b>。',
+    hints: [
+      '继承关系：<b>人员</b>是父类，<b>学生</b>和<b>教师</b>是子类。每个子类自己单独建一个实体，共享父类的主键。',
+      '两个特化关系："特化"（人员-学生 1:1） + "特化"（人员-教师 1:1）。关系名也可以叫"ISA"、"派生"、"继承"。',
+      '子实体不必再画自己的主键——只放特化后的独有属性（专业 / 职称）。基数：父端和子端都是 1。',
+    ],
+    reference: {
+      entities: [
+        { name: '人员', attrs: [
+          {name:'人员编号', pk:true},
+          {name:'姓名', pk:false},
+          {name:'出生日期', pk:false}
+        ]},
+        { name: '学生', isSubclass: true, attrs: [
+          {name:'专业', pk:false}
+        ]},
+        { name: '教师', isSubclass: true, attrs: [
+          {name:'职称', pk:false}
+        ]}
+      ],
+      relationships: [
+        { name:'特化', entity1:'人员', entity2:'学生', cardinality:'1:1' },
+        { name:'特化', entity1:'人员', entity2:'教师', cardinality:'1:1' }
+      ]
+    },
+    ansNote: '类表继承（Class Table Inheritance）：父类通用属性放父表，特化属性放子表。ER 图上体现为父实体—菱形—子实体的 1:1 结构。转换到 P2 关系模式时子表 PK 同时是外键指向父表。'
+  },
+  {
+    id: 'I2', group: 'inherit', difficulty: 'hard',
+    title: '车辆 → 轿车 / 卡车：继承（ISA）',
+    scenario: '<b>业务描述</b>：车管所车辆数据库。<b>车辆</b>（父类）有 <b>车架号</b>（PK）、<b>品牌</b>、<b>登记日期</b>。<b>轿车</b>（子类）多一个<b>座位数</b>；<b>卡车</b>（子类）多一个<b>载重</b>。<br><br>👉 建车辆 + 轿车 + 卡车 3 个实体 + 两个"特化"关系（都是 1:1）。',
+    hints: [
+      '同 I1 的模式：车辆是父类，轿车和卡车是子类。3 个实体 + 2 个特化关系。',
+      '子实体只画独有属性：轿车 → 座位数；卡车 → 载重。',
+      '基数：两个特化都是 1:1。',
+    ],
+    reference: {
+      entities: [
+        { name: '车辆', attrs: [
+          {name:'车架号', pk:true},
+          {name:'品牌', pk:false},
+          {name:'登记日期', pk:false}
+        ]},
+        { name: '轿车', isSubclass: true, attrs: [
+          {name:'座位数', pk:false}
+        ]},
+        { name: '卡车', isSubclass: true, attrs: [
+          {name:'载重', pk:false}
+        ]}
+      ],
+      relationships: [
+        { name:'特化', entity1:'车辆', entity2:'轿车', cardinality:'1:1' },
+        { name:'特化', entity1:'车辆', entity2:'卡车', cardinality:'1:1' }
+      ]
+    },
+    ansNote: 'I1/I2 完全同构。学生抓住"子类实体挂在父类实体下，用特化菱形连接，基数 1:1"这一个特征，所有继承题都是同一个套路。'
+  },
+];
+
+// 同义词表：只是让判分更宽松，学生用中文/英文/常见缩写都能通过
+const SYNONYMS = {
+  entity: [
+    ['图书','book','图书信息','书','books'],
+    ['员工','employee','职工','emp','staff','worker'],
+    ['产品','product','商品','goods','item'],
+    ['部门','department','dept','部'],
+    ['出版社','publisher','pub','press'],
+    ['客户','customer','cust','buyer','用户','user'],
+    ['订单','order','orders','订购单'],
+    ['订单明细','订单项','订单行','orderitem','order_item','lineitem','line_item','明细','item'],
+    ['学生','student','stu'],
+    ['课程','course','cou','班课','科目','subject'],
+    ['作者','author','writer'],
+    ['家属','dependent','家人','亲属','家眷'],
+    ['人员','person','人','个人','people'],
+    ['教师','teacher','老师','教员','faculty'],
+    ['车辆','vehicle','车','机动车'],
+    ['轿车','car','小汽车','轿车信息'],
+    ['卡车','truck','货车'],
+  ],
+  attr: [
+    ['书号','bookid','book_id','bid','书籍编号','图书编号','id'],
+    ['书名','title','标题','图书名','图书名称'],
+    ['作者','author','作者名'],
+    ['定价','price','价格','单价','图书定价'],
+    ['工号','empid','emp_id','eid','员工编号','员工号','职工号','id'],
+    ['姓名','name','名字','员工姓名','fullname','full_name'],
+    ['部门','dept','department'],
+    ['入职日期','hiredate','hire_date','入职时间','入职日'],
+    ['产品编号','productid','product_id','pid','商品编号','商品id'],
+    ['名称','name','产品名','产品名称','商品名'],
+    ['单价','price','价格','单价'],
+    ['库存','stock','inventory','库存量','库存数','数量'],
+    ['部门编号','deptid','dept_id','部门号','did','id'],
+    ['部门名称','deptname','dept_name','部门名'],
+    ['出版社编号','pubid','pub_id','出版社号','id'],
+    ['出版社名称','pubname','pub_name','出版社名'],
+    ['客户编号','custid','cust_id','客户号','客户id','id'],
+    ['电话','phone','tel','手机','联系方式','手机号'],
+    ['订单号','orderid','order_id','订单编号','id'],
+    ['下单日期','orderdate','order_date','订单日期','下单时间'],
+    ['订单金额','totalamount','total_amount','总金额','金额','订单总额','total'],
+    ['学号','sid','sno','stuid','学生编号','学生号','id'],
+    ['课程号','cid','cno','courseid','course_id','课程编号','id'],
+    ['课程名','cname','coursename','course_name','课程名称'],
+    ['学分','credit','学分数','credits'],
+    ['成绩','grade','score','分数','得分'],
+    ['作者编号','aid','author_id','authorid','作者号','id'],
+    ['作者姓名','aname','author_name','authorname','作者名'],
+    ['贡献排名','contribrank','contrib_rank','排名','贡献顺序','作者顺序','rank'],
+    ['行号','lineno','line_no','序号','line','明细行号'],
+    ['商品名','productname','product_name','商品名称','产品名','item_name'],
+    ['数量','quantity','qty','数目','件数'],
+    ['家属序号','depno','dep_no','家属编号','家属序','序号','no'],
+    ['家属姓名','depname','dep_name','家属名','家人姓名'],
+    ['关系','relation','relationship','亲属关系'],
+    ['人员编号','pid','person_id','personid','人员号','id'],
+    ['出生日期','birthdate','birth_date','出生日','生日'],
+    ['专业','major','专业名','specialization'],
+    ['职称','title','职务'],
+    ['车架号','vin','车架编号','id'],
+    ['品牌','brand','厂牌','make'],
+    ['登记日期','regdate','reg_date','登记日','注册日期'],
+    ['座位数','seatnum','seat_num','座位','seats'],
+    ['载重','loadcapacity','load_capacity','载重量','载重吨数','载重能力'],
+  ],
+  relationship: [
+    ['选修','选课','take','enroll','选'],
+    ['拥有','包含','有','属于','归属','含有','manage','管理'],
+    ['出版','发行','publish','出版发行'],
+    ['下单','订购','下','order','place'],
+    ['撰写','编写','write','author','著作','著','编','撰'],
+    ['包含','含有','contain','include','包括','拥有'],
+    ['登记','登录','register','拥有','记录','录入'],
+    ['特化','isa','is-a','is_a','specialize','继承','派生','分为','extends','extend'],
+  ],
+};
+
+// ==================================================================
+// ============ 全局状态 ============
+// ==================================================================
+let currentGroup = GROUPS[0].key;
+let progress = JSON.parse(localStorage.getItem('sql-lab-er-graph-progress-v2') || '{}');
+let viewedAnswers = new Set(JSON.parse(localStorage.getItem('sql-lab-er-graph-viewed-v2') || '[]'));
+let editors = {}; // 每题一个 editor 实例
+
+function saveProgress() { localStorage.setItem('sql-lab-er-graph-progress-v2', JSON.stringify(progress)); }
+function saveViewedAnswers() { localStorage.setItem('sql-lab-er-graph-viewed-v2', JSON.stringify([...viewedAnswers])); }
+
+function graphStorageKey(qid) { return 'sql-lab-er-graph-v2-' + qid; }
+function loadGraph(qid) {
+  try {
+    const raw = localStorage.getItem(graphStorageKey(qid));
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) { return null; }
+}
+function saveGraph(qid, g) {
+  try { localStorage.setItem(graphStorageKey(qid), JSON.stringify(g)); } catch (e) {}
+}
+function clearGraph(qid) { localStorage.removeItem(graphStorageKey(qid)); }
+// ==================================================================
+// ============ 核心：图结构标准化 & 判分 ============
+// ==================================================================
+
+function normText(s) {
+  return String(s || '').trim().toLowerCase().replace(/[\s_\-]+/g, '');
+}
+
+// 在 SYNONYMS[kind] 里找 term 属于哪个组，返回该组第 0 项作为 canonical key；找不到就返回自身 normText
+function canonical(term, kind) {
+  const n = normText(term);
+  if (!n) return '';
+  const groups = (SYNONYMS && SYNONYMS[kind]) || [];
+  for (const g of groups) {
+    for (const w of g) {
+      if (normText(w) === n) return normText(g[0]);
+    }
+  }
+  return n;
+}
+
+// 卡帕基数归一：{c1, c2} → '1:1' / '1:N' / 'M:N'
+// 输入 c1/c2 ∈ {'1','N','M'}
+function normalizeCardinality(c1, c2) {
+  const norm = c => {
+    if (!c) return '?';
+    const s = String(c).toUpperCase();
+    if (s === '1') return '1';
+    if (s === 'N' || s === 'M' || s === '*') return 'M';
+    return '?';
+  };
+  const a = norm(c1), b = norm(c2);
+  if (a === '1' && b === '1') return '1:1';
+  if (a === '1' && b === 'M') return '1:N';
+  if (a === 'M' && b === '1') return '1:N';
+  if (a === 'M' && b === 'M') return 'M:N';
+  return a + ':' + b;
+}
+
+// 把 student's graph (nodes+edges) 转成 { entities:[], relationships:[] }
+// nodes: [{id, kind:'entity'|'rel', name, weak?, attrs?}]
+// edges: [{id, fromId, toId, cardinality:'1'|'N'|'M'}]
+function extractGraph(rawGraph) {
+  const g = rawGraph || { nodes: [], edges: [] };
+  const nodes = g.nodes || [];
+  const edges = g.edges || [];
+  const entityNodes = nodes.filter(n => n.kind === 'entity');
+  const relNodes = nodes.filter(n => n.kind === 'rel');
+  const idToNode = {};
+  nodes.forEach(n => { idToNode[n.id] = n; });
+
+  const entities = entityNodes.map(n => ({
+    name: n.name || '',
+    weak: !!n.weak,
+    isSubclass: !!n.isSubclass,
+    attrs: (n.attrs || []).map(a => ({ name: a.name || '', pk: !!a.pk }))
+  }));
+
+  // 对每个关系节点，找出所有连到它的边（另一端应是实体）
+  const relationships = [];
+  relNodes.forEach(r => {
+    const relEdges = edges.filter(e => e.fromId === r.id || e.toId === r.id);
+    // 只保留连到实体的边
+    const entEdges = relEdges.filter(e => {
+      const other = e.fromId === r.id ? idToNode[e.toId] : idToNode[e.fromId];
+      return other && other.kind === 'entity';
+    });
+    // 判分器 v0.14 主要按二元关系处理（含继承的成对特化关系）；三元及以上先按每对拆分
+    if (entEdges.length === 2) {
+      const eA = entEdges[0], eB = entEdges[1];
+      const entA = idToNode[eA.fromId === r.id ? eA.toId : eA.fromId];
+      const entB = idToNode[eB.fromId === r.id ? eB.toId : eB.fromId];
+      relationships.push({
+        name: r.name || '',
+        weak: !!r.weak,
+        entity1: entA ? entA.name : '',
+        entity2: entB ? entB.name : '',
+        cardinality: normalizeCardinality(eA.cardinality, eB.cardinality),
+        _c1: eA.cardinality, _c2: eB.cardinality,
+      });
+    } else if (entEdges.length > 2) {
+      // 高维关系：拆两两
+      for (let i = 0; i < entEdges.length; i++) {
+        for (let j = i+1; j < entEdges.length; j++) {
+          const eA = entEdges[i], eB = entEdges[j];
+          const entA = idToNode[eA.fromId === r.id ? eA.toId : eA.fromId];
+          const entB = idToNode[eB.fromId === r.id ? eB.toId : eB.fromId];
+          relationships.push({
+            name: r.name || '',
+            weak: !!r.weak,
+            entity1: entA ? entA.name : '',
+            entity2: entB ? entB.name : '',
+            cardinality: normalizeCardinality(eA.cardinality, eB.cardinality),
+          });
+        }
+      }
+    } else if (entEdges.length === 1) {
+      // 只有一条连线：单端悬空，不算完整关系。判分时会作为"缺失关系连线"提示。
+    }
+  });
+
+  return { entities, relationships };
+}
+
+// 属性集合等价（宽容匹配 + PK 必须标）
+// 返回 { ok, missing:[], extraPK:[] } 描述缺什么
+function compareAttrs(refAttrs, stuAttrs) {
+  const refCanon = refAttrs.map(a => ({ canon: canonical(a.name, 'attr'), name: a.name, pk: !!a.pk }));
+  const stuCanon = stuAttrs.map(a => ({ canon: canonical(a.name, 'attr'), name: a.name, pk: !!a.pk }));
+
+  const missing = [];
+  const wrongPK = [];
+  const usedStu = new Set();
+  refCanon.forEach(r => {
+    const idx = stuCanon.findIndex((s,i) => !usedStu.has(i) && s.canon === r.canon);
+    if (idx === -1) {
+      missing.push(r.name);
+    } else {
+      usedStu.add(idx);
+      const s = stuCanon[idx];
+      if (r.pk && !s.pk) wrongPK.push({ name: r.name, expected: 'PK', got: '普通属性' });
+    }
+  });
+  return {
+    ok: missing.length === 0 && wrongPK.length === 0,
+    missing, wrongPK
+  };
+}
+
+// 实体等价：名字匹配 + 属性等价（含 PK）+ 强弱一致
+function compareEntity(refE, stuE) {
+  const nameOK = canonical(refE.name, 'entity') === canonical(stuE.name, 'entity');
+  if (!nameOK) return { ok: false, nameOK: false };
+  const attrRes = compareAttrs(refE.attrs || [], stuE.attrs || []);
+  // 弱实体标注错误（如果参考是 weak，学生也要标 weak）——但作为提示不作为硬性错误（宽松）
+  const weakMatch = !!refE.weak === !!stuE.weak;
+  return {
+    ok: attrRes.ok && weakMatch,
+    nameOK: true,
+    attrRes,
+    weakMismatch: !weakMatch,
+    weakExpected: !!refE.weak,
+    weakGot: !!stuE.weak,
+  };
+}
+
+// 用于把 relationship 三元组归一为可比较的字符串（entity 无序）
+function relKey(rel) {
+  const e1 = canonical(rel.entity1, 'entity');
+  const e2 = canonical(rel.entity2, 'entity');
+  const sorted = [e1, e2].sort();
+  return sorted[0] + '|' + sorted[1] + '|' + rel.cardinality;
+}
+function relKeyByName(rel) {
+  const e1 = canonical(rel.entity1, 'entity');
+  const e2 = canonical(rel.entity2, 'entity');
+  const sorted = [e1, e2].sort();
+  const rn = canonical(rel.name, 'relationship');
+  return sorted[0] + '|' + sorted[1] + '|' + rn;
+}
+
+// 主判分入口
+// 返回 { verdict:'pass'|'partial'|'fail', metrics:{entities, attrs, rels, cards}, issues:[str] }
+function judgeGraph(refGraph, stuGraph) {
+  const issues = [];
+  const okEnts = [];
+  const missEnts = [];
+  const wrongAttrEnts = [];
+  const weakMisEnts = [];
+  const extraEnts = [];
+
+  const refEntsByCanon = {};
+  refGraph.entities.forEach(e => { refEntsByCanon[canonical(e.name, 'entity')] = e; });
+  const stuEntsByCanon = {};
+  stuGraph.entities.forEach(e => { stuEntsByCanon[canonical(e.name, 'entity')] = e; });
+
+  // 实体匹配
+  refGraph.entities.forEach(refE => {
+    const key = canonical(refE.name, 'entity');
+    const stuE = stuEntsByCanon[key];
+    if (!stuE) {
+      missEnts.push(refE.name);
+      return;
+    }
+    // 继承子类实体：允许属性缺失（学生可能没重复画父类 PK）
+    if (refE.isSubclass) {
+      const attrRes = compareAttrs(refE.attrs || [], stuE.attrs || []);
+      if (!attrRes.ok) {
+        wrongAttrEnts.push({ name: refE.name, ...attrRes });
+      } else {
+        okEnts.push(refE.name);
+      }
+    } else {
+      const res = compareEntity(refE, stuE);
+      if (!res.ok) {
+        if (res.attrRes && !res.attrRes.ok) wrongAttrEnts.push({ name: refE.name, ...res.attrRes });
+        if (res.weakMismatch) weakMisEnts.push({ name: refE.name, expected: res.weakExpected });
+      } else {
+        okEnts.push(refE.name);
+      }
+    }
+  });
+  // 多出的实体
+  stuGraph.entities.forEach(stuE => {
+    const key = canonical(stuE.name, 'entity');
+    if (!refEntsByCanon[key]) extraEnts.push(stuE.name || '(未命名)');
+  });
+
+  // 关系匹配（按 {entity1, entity2, cardinality} 三元组集合对比）
+  const refRelKeys = new Set(refGraph.relationships.map(relKey));
+  const stuRelKeys = new Set(stuGraph.relationships.map(relKey));
+
+  const missRels = [];
+  const wrongCardRels = [];
+  const missRelStructOnly = []; // 关系存在但基数错
+  const extraRels = [];
+  const okRels = [];
+
+  refGraph.relationships.forEach(refR => {
+    const key = relKey(refR);
+    if (stuRelKeys.has(key)) {
+      okRels.push(refR);
+      return;
+    }
+    // 没匹配到，尝试忽略基数看关系是否存在
+    const structKey = canonical(refR.entity1, 'entity') + '|' + canonical(refR.entity2, 'entity');
+    const structKeySorted = [canonical(refR.entity1, 'entity'), canonical(refR.entity2, 'entity')].sort().join('|');
+    const stuSameStruct = stuGraph.relationships.find(sr => {
+      const a = [canonical(sr.entity1, 'entity'), canonical(sr.entity2, 'entity')].sort().join('|');
+      return a === structKeySorted;
+    });
+    if (stuSameStruct) {
+      wrongCardRels.push({ ref: refR, stu: stuSameStruct });
+    } else {
+      missRels.push(refR);
+    }
+  });
+  stuGraph.relationships.forEach(stuR => {
+    const structKeySorted = [canonical(stuR.entity1, 'entity'), canonical(stuR.entity2, 'entity')].sort().join('|');
+    const refSame = refGraph.relationships.find(rr => {
+      const a = [canonical(rr.entity1, 'entity'), canonical(rr.entity2, 'entity')].sort().join('|');
+      return a === structKeySorted;
+    });
+    if (!refSame) extraRels.push(stuR);
+  });
+
+  // 组装 issues
+  if (missEnts.length) issues.push('❌ 缺少实体：' + missEnts.join('、'));
+  wrongAttrEnts.forEach(x => {
+    const parts = [];
+    if (x.missing && x.missing.length) parts.push('缺少属性 ' + x.missing.join('、'));
+    if (x.wrongPK && x.wrongPK.length) parts.push('未标主键 ' + x.wrongPK.map(p => p.name).join('、'));
+    if (parts.length) issues.push('⚠️ 实体「' + x.name + '」' + parts.join('；'));
+  });
+  weakMisEnts.forEach(x => {
+    issues.push('⚠️ 实体「' + x.name + '」应为' + (x.expected ? '弱实体（虚框）' : '普通实体'));
+  });
+  if (extraEnts.length) issues.push('ℹ️ 多余实体（不影响通过）：' + extraEnts.join('、'));
+  if (missRels.length) missRels.forEach(r => issues.push('❌ 缺少关系：' + r.entity1 + ' ─「' + r.name + '」─ ' + r.entity2 + '（' + r.cardinality + '）'));
+  wrongCardRels.forEach(x => {
+    issues.push('⚠️ 关系「' + x.ref.name + '」' + x.ref.entity1 + '↔' + x.ref.entity2 + ' 基数应为 <b>' + x.ref.cardinality + '</b>，实际为 <b>' + x.stu.cardinality + '</b>');
+  });
+  if (extraRels.length) extraRels.forEach(r => issues.push('ℹ️ 多余关系（不影响通过）：' + (r.entity1 || '?') + ' ─「' + (r.name || '未命名') + '」─ ' + (r.entity2 || '?')));
+
+  // 指标计算
+  const totalEnts = refGraph.entities.length;
+  const okEntsCnt = okEnts.length;
+  const totalAttrChecks = refGraph.entities.reduce((s,e) => s + (e.attrs?.length || 0), 0);
+  const missAttrCnt = wrongAttrEnts.reduce((s,x) => s + (x.missing?.length || 0) + (x.wrongPK?.length || 0), 0);
+  const totalRels = refGraph.relationships.length;
+  const okRelsCnt = okRels.length;
+
+  // 通过判定：
+  //   - 所有 ref 实体都匹配（含属性 & PK & weak）
+  //   - 所有 ref 关系三元组都匹配
+  //   - 允许有多余节点（extra）不算错
+  const allEntsOK = missEnts.length === 0 && wrongAttrEnts.length === 0 && weakMisEnts.length === 0;
+  const allRelsOK = missRels.length === 0 && wrongCardRels.length === 0;
+
+  let verdict;
+  if (allEntsOK && allRelsOK) {
+    verdict = 'pass';
+  } else if (missEnts.length === totalEnts && stuGraph.entities.length === 0) {
+    verdict = 'fail';
+  } else if (
+    (missEnts.length >= Math.max(1, Math.ceil(totalEnts / 2))) ||
+    (totalRels > 0 && missRels.length >= totalRels && wrongCardRels.length === 0)
+  ) {
+    verdict = 'fail';
+  } else {
+    verdict = 'partial';
+  }
+
+  return {
+    verdict,
+    metrics: {
+      entities: okEntsCnt + ' / ' + totalEnts,
+      attrOK: (totalAttrChecks - missAttrCnt) + ' / ' + totalAttrChecks,
+      relationships: okRelsCnt + ' / ' + totalRels,
+    },
+    issues,
+    detail: { missEnts, wrongAttrEnts, weakMisEnts, extraEnts, missRels, wrongCardRels, extraRels, okEnts, okRels }
+  };
+}
+
+// 参考图对比：把参考图渲染出来（用于"显示参考答案"按钮）
+function referenceGraphToDisplay(ref) {
+  // 返回带占位坐标的 nodes/edges，用于可视化
+  const nodes = [];
+  const edges = [];
+  const cx = 400, cy = 240;
+  const rEntArr = ref.entities;
+  const rRel = ref.relationships;
+  // 简单布局：实体环形排布，关系放中间
+  const N = rEntArr.length;
+  const radius = 200;
+  rEntArr.forEach((e, i) => {
+    const ang = (2 * Math.PI * i / Math.max(N,1)) - Math.PI / 2;
+    nodes.push({
+      id: 'ref-e-' + i,
+      kind: 'entity',
+      name: e.name,
+      weak: !!e.weak,
+      isSubclass: !!e.isSubclass,
+      attrs: (e.attrs||[]).map(a => ({name:a.name, pk:!!a.pk})),
+      x: cx + Math.cos(ang) * radius,
+      y: cy + Math.sin(ang) * radius,
+    });
+  });
+  const nameToId = {};
+  rEntArr.forEach((e,i) => { nameToId[e.name] = 'ref-e-' + i; });
+  rRel.forEach((r, i) => {
+    const relId = 'ref-r-' + i;
+    // 关系菱形放在两实体连线中点略偏移
+    const e1Id = nameToId[r.entity1];
+    const e2Id = nameToId[r.entity2];
+    const n1 = nodes.find(n => n.id === e1Id);
+    const n2 = nodes.find(n => n.id === e2Id);
+    let rx = cx, ry = cy;
+    if (n1 && n2) {
+      rx = (n1.x + n2.x) / 2;
+      ry = (n1.y + n2.y) / 2 + (i * 40 - 20); // 稍微错开
+    }
+    nodes.push({
+      id: relId,
+      kind: 'rel',
+      name: r.name,
+      weak: !!r.weak,
+      attrs: [],
+      x: rx, y: ry,
+    });
+    // 拆基数
+    const [c1, c2] = cardTuple(r.cardinality);
+    edges.push({ id: 'ref-ed-' + i + '-a', fromId: e1Id, toId: relId, cardinality: c1, weak: !!r.weak });
+    edges.push({ id: 'ref-ed-' + i + '-b', fromId: e2Id, toId: relId, cardinality: c2, weak: !!r.weak });
+  });
+  return { nodes, edges };
+}
+
+function cardTuple(card) {
+  // '1:1' -> ['1','1']; '1:N' -> ['1','N']; 'M:N' -> ['M','N']
+  if (card === '1:1') return ['1','1'];
+  if (card === '1:N') return ['1','N'];
+  if (card === 'M:N') return ['M','N'];
+  return ['1','1'];
+}
+// ==================================================================
+// ============ 拖拽式 ER 建模器（SVG + Pointer Events） ============
+// ==================================================================
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const CANVAS_W = 900;
+const CANVAS_H = 520;
+
+// —— Prompt Modal（改名/加属性） ——
+function openPromptModal({ title, desc, initial = '', onConfirm }) {
+  const modal = document.getElementById('prompt-modal');
+  document.getElementById('prompt-title').textContent = title || '输入';
+  document.getElementById('prompt-desc').textContent = desc || '请输入：';
+  const input = document.getElementById('prompt-input');
+  input.value = initial;
+  document.getElementById('prompt-extra').textContent = '';
+  const cancelBtn = document.getElementById('prompt-cancel');
+  const confirmBtn = document.getElementById('prompt-confirm');
+  modal.classList.remove('hidden');
+  setTimeout(() => input.focus(), 30);
+  const done = (val) => {
+    modal.classList.add('hidden');
+    if (val != null) onConfirm && onConfirm(val);
+  };
+  confirmBtn.onclick = () => done(input.value.trim());
+  cancelBtn.onclick = () => done(null);
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') done(input.value.trim());
+    if (e.key === 'Escape') done(null);
+  };
+}
+
+// Editor 类：每题一个实例
+function createEditor(qid, container) {
+  const state = {
+    qid,
+    nodes: [],   // {id, kind:'entity'|'rel', name, x, y, weak?, attrs?, isSubclass?}
+    edges: [],   // {id, fromId, toId, cardinality:'1'|'N'|'M', weak?}
+    selectedId: null,
+    selectedEdgeId: null,
+    linkMode: false,   // true 时点击两个节点连线
+    linkFrom: null,    // 记录连线起点 nodeId
+    nextId: 1,
+  };
+
+  // 从 localStorage 恢复
+  const saved = loadGraph(qid);
+  if (saved && Array.isArray(saved.nodes)) {
+    state.nodes = saved.nodes;
+    state.edges = saved.edges || [];
+    // nextId 继续往后
+    state.nodes.forEach(n => {
+      const m = String(n.id).match(/(\d+)$/);
+      if (m) state.nextId = Math.max(state.nextId, parseInt(m[1]) + 1);
+    });
+    state.edges.forEach(e => {
+      const m = String(e.id).match(/(\d+)$/);
+      if (m) state.nextId = Math.max(state.nextId, parseInt(m[1]) + 1);
+    });
+  }
+
+  const nextNodeId = () => 'n' + (state.nextId++);
+  const nextEdgeId = () => 'e' + (state.nextId++);
+
+  const save = () => saveGraph(qid, { nodes: state.nodes, edges: state.edges });
+
+  // ---------- 渲染 ----------
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'er-canvas');
+  svg.setAttribute('viewBox', `0 0 ${CANVAS_W} ${CANVAS_H}`);
+  svg.setAttribute('width', CANVAS_W);
+  svg.setAttribute('height', CANVAS_H);
+  svg.style.width = '100%';
+  svg.style.minWidth = CANVAS_W + 'px';
+  svg.style.height = CANVAS_H + 'px';
+
+  container.appendChild(svg);
+
+  // 按 z-order 分层：edges 先绘制，nodes 后绘制
+  const edgesLayer = document.createElementNS(SVG_NS, 'g');
+  const nodesLayer = document.createElementNS(SVG_NS, 'g');
+  edgesLayer.setAttribute('data-layer', 'edges');
+  nodesLayer.setAttribute('data-layer', 'nodes');
+  svg.appendChild(edgesLayer);
+  svg.appendChild(nodesLayer);
+
+  function clearLayer(layer) { while (layer.firstChild) layer.removeChild(layer.firstChild); }
+
+  // 节点尺寸
+  function entitySize(node) {
+    const attrsCount = (node.attrs || []).length;
+    const rowH = 18;
+    const headH = 30;
+    const w = 150;
+    const h = headH + attrsCount * rowH + 10;
+    return { w, h };
+  }
+  function relSize(node) {
+    const name = node.name || (node.weak ? '弱关系' : '关系');
+    const attrsCount = (node.attrs || []).length;
+    const baseW = Math.max(100, name.length * 14 + 20);
+    const baseH = 60 + attrsCount * 14;
+    return { w: baseW, h: baseH };
+  }
+
+  // 计算节点中心 → 边缘的连接点（用于绘制边）
+  function connectionPoint(node, tx, ty) {
+    // node.x/y 是节点的中心
+    if (node.kind === 'entity') {
+      const { w, h } = entitySize(node);
+      const halfW = w/2, halfH = h/2;
+      // 从中心指向目标的向量
+      const dx = tx - node.x, dy = ty - node.y;
+      if (dx === 0 && dy === 0) return { x: node.x, y: node.y };
+      // 矩形边缘交点
+      const scaleX = Math.abs(dx) > 1e-6 ? halfW / Math.abs(dx) : Infinity;
+      const scaleY = Math.abs(dy) > 1e-6 ? halfH / Math.abs(dy) : Infinity;
+      const scale = Math.min(scaleX, scaleY);
+      return { x: node.x + dx * scale, y: node.y + dy * scale };
+    } else {
+      // 菱形
+      const { w, h } = relSize(node);
+      const dx = tx - node.x, dy = ty - node.y;
+      if (dx === 0 && dy === 0) return { x: node.x, y: node.y };
+      // 菱形边缘：|dx|/(w/2) + |dy|/(h/2) = 1
+      const t = 1 / (Math.abs(dx)/(w/2) + Math.abs(dy)/(h/2));
+      return { x: node.x + dx * t, y: node.y + dy * t };
+    }
+  }
+
+  function renderAll() {
+    clearLayer(edgesLayer);
+    clearLayer(nodesLayer);
+    // 先画边
+    state.edges.forEach(edge => drawEdge(edge));
+    // 再画节点
+    state.nodes.forEach(node => drawNode(node));
+  }
+
+  function drawNode(node) {
+    const g = document.createElementNS(SVG_NS, 'g');
+    g.setAttribute('class', 'er-node-group');
+    g.setAttribute('data-id', node.id);
+    g.setAttribute('data-kind', node.kind);
+    g.setAttribute('transform', `translate(${node.x},${node.y})`);
+
+    if (state.linkMode && state.linkFrom === node.id) g.classList.add('link-src');
+
+    if (node.kind === 'entity') {
+      const { w, h } = entitySize(node);
+      const rect = document.createElementNS(SVG_NS, 'rect');
+      rect.setAttribute('class', 'er-entity-rect' + (node.weak ? ' weak' : '') + (state.selectedId === node.id ? ' selected' : ''));
+      rect.setAttribute('x', -w/2);
+      rect.setAttribute('y', -h/2);
+      rect.setAttribute('width', w);
+      rect.setAttribute('height', h);
+      rect.setAttribute('rx', 4);
+      g.appendChild(rect);
+
+      // 双层弱实体：额外画一层内框
+      if (node.weak) {
+        const rect2 = document.createElementNS(SVG_NS, 'rect');
+        rect2.setAttribute('x', -w/2 + 4);
+        rect2.setAttribute('y', -h/2 + 4);
+        rect2.setAttribute('width', w - 8);
+        rect2.setAttribute('height', h - 8);
+        rect2.setAttribute('rx', 3);
+        rect2.setAttribute('fill', 'none');
+        rect2.setAttribute('stroke', '#6f42c1');
+        rect2.setAttribute('stroke-width', 1);
+        rect2.setAttribute('stroke-dasharray', '4 3');
+        g.appendChild(rect2);
+      }
+
+      // 标题
+      const title = document.createElementNS(SVG_NS, 'text');
+      title.setAttribute('class', 'er-entity-title' + (node.weak ? ' weak' : ''));
+      title.setAttribute('text-anchor', 'middle');
+      title.setAttribute('x', 0);
+      title.setAttribute('y', -h/2 + 20);
+      title.textContent = node.name || (node.weak ? '弱实体' : '实体');
+      g.appendChild(title);
+
+      // 分隔线
+      if ((node.attrs || []).length > 0) {
+        const line = document.createElementNS(SVG_NS, 'line');
+        line.setAttribute('x1', -w/2 + 4);
+        line.setAttribute('x2', w/2 - 4);
+        line.setAttribute('y1', -h/2 + 30);
+        line.setAttribute('y2', -h/2 + 30);
+        line.setAttribute('stroke', '#d0d7de');
+        line.setAttribute('stroke-width', 1);
+        g.appendChild(line);
+      }
+
+      // 属性行
+      (node.attrs || []).forEach((a, i) => {
+        const t = document.createElementNS(SVG_NS, 'text');
+        t.setAttribute('class', 'er-attr-row' + (a.pk ? ' pk' : ''));
+        t.setAttribute('x', -w/2 + 10);
+        t.setAttribute('y', -h/2 + 30 + 16 + i * 18);
+        t.textContent = (a.pk ? '🔑 ' : '· ') + (a.name || '(未命名)');
+        g.appendChild(t);
+      });
+
+    } else {
+      // 关系菱形
+      const { w, h } = relSize(node);
+      const pts = `0,${-h/2} ${w/2},0 0,${h/2} ${-w/2},0`;
+      const poly = document.createElementNS(SVG_NS, 'polygon');
+      poly.setAttribute('class', 'er-rel-poly' + (node.weak ? ' weak' : '') + (state.selectedId === node.id ? ' selected' : ''));
+      poly.setAttribute('points', pts);
+      g.appendChild(poly);
+
+      // 弱关系再画一层内菱
+      if (node.weak) {
+        const inner = document.createElementNS(SVG_NS, 'polygon');
+        const w2 = w - 12, h2 = h - 12;
+        inner.setAttribute('points', `0,${-h2/2} ${w2/2},0 0,${h2/2} ${-w2/2},0`);
+        inner.setAttribute('fill', 'none');
+        inner.setAttribute('stroke', '#d29922');
+        inner.setAttribute('stroke-width', 1);
+        inner.setAttribute('stroke-dasharray', '4 3');
+        g.appendChild(inner);
+      }
+
+      // 关系名
+      const title = document.createElementNS(SVG_NS, 'text');
+      title.setAttribute('class', 'er-rel-title');
+      title.setAttribute('x', 0);
+      title.setAttribute('y', 4);
+      title.textContent = node.name || (node.weak ? '弱关系' : '关系');
+      g.appendChild(title);
+
+      // 关系上的属性（在菱形外侧显示）
+      (node.attrs || []).forEach((a, i) => {
+        const t = document.createElementNS(SVG_NS, 'text');
+        t.setAttribute('class', 'er-attr-row' + (a.pk ? ' pk' : ''));
+        t.setAttribute('x', 0);
+        t.setAttribute('y', h/2 - 8 + (i - (node.attrs.length - 1)/2) * 12);
+        t.setAttribute('text-anchor', 'middle');
+        t.textContent = '· ' + (a.name || '(属性)');
+        g.appendChild(t);
+      });
+    }
+
+    // 选中/悬浮时显示删除按钮
+    if (state.selectedId === node.id) {
+      const size = node.kind === 'entity' ? entitySize(node) : relSize(node);
+      const del = document.createElementNS(SVG_NS, 'g');
+      const cx = size.w/2 + 6, cy = -size.h/2 - 6;
+      const circ = document.createElementNS(SVG_NS, 'circle');
+      circ.setAttribute('cx', cx);
+      circ.setAttribute('cy', cy);
+      circ.setAttribute('r', 10);
+      circ.setAttribute('class', 'er-del-btn');
+      const x1 = document.createElementNS(SVG_NS, 'line');
+      x1.setAttribute('x1', cx-4); x1.setAttribute('y1', cy-4);
+      x1.setAttribute('x2', cx+4); x1.setAttribute('y2', cy+4);
+      x1.setAttribute('stroke', '#fff'); x1.setAttribute('stroke-width', 2);
+      const x2 = document.createElementNS(SVG_NS, 'line');
+      x2.setAttribute('x1', cx-4); x2.setAttribute('y1', cy+4);
+      x2.setAttribute('x2', cx+4); x2.setAttribute('y2', cy-4);
+      x2.setAttribute('stroke', '#fff'); x2.setAttribute('stroke-width', 2);
+      del.appendChild(circ); del.appendChild(x1); del.appendChild(x2);
+      del.style.cursor = 'pointer';
+      del.addEventListener('pointerdown', (ev) => {
+        ev.stopPropagation();
+        deleteNode(node.id);
+      });
+      g.appendChild(del);
+
+      // 添加"改名"和"编辑属性"按钮（悬浮在节点上方）
+      const editG = document.createElementNS(SVG_NS, 'g');
+      editG.setAttribute('transform', `translate(${-size.w/2 - 4}, ${-size.h/2 - 22})`);
+      const editBg = document.createElementNS(SVG_NS, 'rect');
+      editBg.setAttribute('x', 0); editBg.setAttribute('y', 0);
+      editBg.setAttribute('width', size.w + 8); editBg.setAttribute('height', 20);
+      editBg.setAttribute('rx', 4);
+      editBg.setAttribute('fill', '#fff');
+      editBg.setAttribute('stroke', '#0969da');
+      editBg.setAttribute('stroke-width', 1);
+      editG.appendChild(editBg);
+
+      const btn1 = document.createElementNS(SVG_NS, 'text');
+      btn1.setAttribute('x', 8);
+      btn1.setAttribute('y', 14);
+      btn1.setAttribute('font-size', 11);
+      btn1.setAttribute('fill', '#0550ae');
+      btn1.style.cursor = 'pointer';
+      btn1.style.userSelect = 'none';
+      btn1.textContent = '✏️ 改名';
+      btn1.addEventListener('pointerdown', (ev) => {
+        ev.stopPropagation();
+        renameNode(node.id);
+      });
+      editG.appendChild(btn1);
+
+      const btn2 = document.createElementNS(SVG_NS, 'text');
+      btn2.setAttribute('x', 60);
+      btn2.setAttribute('y', 14);
+      btn2.setAttribute('font-size', 11);
+      btn2.setAttribute('fill', '#0550ae');
+      btn2.style.cursor = 'pointer';
+      btn2.style.userSelect = 'none';
+      btn2.textContent = node.kind === 'entity' ? '📋 编辑属性' : '📋 编辑属性';
+      btn2.addEventListener('pointerdown', (ev) => {
+        ev.stopPropagation();
+        editAttrs(node.id);
+      });
+      editG.appendChild(btn2);
+
+      if (node.kind === 'entity') {
+        const btn3 = document.createElementNS(SVG_NS, 'text');
+        btn3.setAttribute('x', 130);
+        btn3.setAttribute('y', 14);
+        btn3.setAttribute('font-size', 11);
+        btn3.setAttribute('fill', node.weak ? '#6f42c1' : '#57606a');
+        btn3.style.cursor = 'pointer';
+        btn3.style.userSelect = 'none';
+        btn3.textContent = node.weak ? '💠 转普通' : '🪶 转弱实体';
+        btn3.addEventListener('pointerdown', (ev) => {
+          ev.stopPropagation();
+          toggleWeak(node.id);
+        });
+        editG.appendChild(btn3);
+      }
+
+      g.appendChild(editG);
+    }
+
+    // 拖拽 + 选中
+    attachDragHandlers(g, node);
+
+    nodesLayer.appendChild(g);
+  }
+
+  function drawEdge(edge) {
+    const fromN = state.nodes.find(n => n.id === edge.fromId);
+    const toN = state.nodes.find(n => n.id === edge.toId);
+    if (!fromN || !toN) return;
+
+    const p1 = connectionPoint(fromN, toN.x, toN.y);
+    const p2 = connectionPoint(toN, fromN.x, fromN.y);
+
+    // 命中区（宽的透明线，方便点击）
+    const hit = document.createElementNS(SVG_NS, 'line');
+    hit.setAttribute('class', 'er-edge-hit');
+    hit.setAttribute('x1', p1.x); hit.setAttribute('y1', p1.y);
+    hit.setAttribute('x2', p2.x); hit.setAttribute('y2', p2.y);
+    hit.setAttribute('data-edge-id', edge.id);
+
+    const line = document.createElementNS(SVG_NS, 'line');
+    line.setAttribute('class', 'er-edge-line' + (edge.weak ? ' weak-line' : ''));
+    line.setAttribute('x1', p1.x); line.setAttribute('y1', p1.y);
+    line.setAttribute('x2', p2.x); line.setAttribute('y2', p2.y);
+
+    // 基数标签
+    const mx = (p1.x + p2.x)/2, my = (p1.y + p2.y)/2;
+    const bg = document.createElementNS(SVG_NS, 'rect');
+    bg.setAttribute('x', mx - 14); bg.setAttribute('y', my - 12);
+    bg.setAttribute('width', 28); bg.setAttribute('height', 22);
+    bg.setAttribute('rx', 11);
+    bg.setAttribute('class', 'er-card-bg');
+    const txt = document.createElementNS(SVG_NS, 'text');
+    txt.setAttribute('x', mx); txt.setAttribute('y', my);
+    txt.setAttribute('class', 'er-card-text');
+    txt.textContent = edge.cardinality || '1';
+    // 点击卡片切换基数
+    const cardG = document.createElementNS(SVG_NS, 'g');
+    cardG.appendChild(bg); cardG.appendChild(txt);
+    cardG.style.cursor = 'pointer';
+    cardG.addEventListener('pointerdown', (ev) => {
+      ev.stopPropagation();
+      cycleCardinality(edge.id);
+    });
+
+    edgesLayer.appendChild(hit);
+    edgesLayer.appendChild(line);
+    edgesLayer.appendChild(cardG);
+
+    // 点击边（不点标签）也可以选中
+    hit.addEventListener('pointerdown', (ev) => {
+      ev.stopPropagation();
+      // 二次点击删除
+      if (state.selectedEdgeId === edge.id) {
+        if (confirm('删除这条连线？')) {
+          state.edges = state.edges.filter(e => e.id !== edge.id);
+          state.selectedEdgeId = null;
+          save(); renderAll();
+        }
+      } else {
+        state.selectedEdgeId = edge.id;
+        line.classList.add('hover');
+      }
+    });
+  }
+
+  // ---------- 拖拽 ----------
+  function attachDragHandlers(g, node) {
+    let dragging = false;
+    let startX = 0, startY = 0;
+    let origX = 0, origY = 0;
+    let hasMoved = false;
+    let ptrId = null;
+
+    g.addEventListener('pointerdown', (ev) => {
+      // 如果点在删除按钮/改名/属性按钮上，pointerdown 已经 stopPropagation，不会到这里
+      if (state.linkMode) {
+        // 连线模式：点击 = 选定端点
+        if (state.linkFrom == null) {
+          state.linkFrom = node.id;
+          renderAll();
+        } else if (state.linkFrom === node.id) {
+          state.linkFrom = null;
+          renderAll();
+        } else {
+          // 完成连线
+          createEdge(state.linkFrom, node.id);
+          state.linkFrom = null;
+          // 保持链接模式，方便继续画
+          renderAll();
+        }
+        return;
+      }
+      dragging = true;
+      hasMoved = false;
+      ptrId = ev.pointerId;
+      startX = ev.clientX; startY = ev.clientY;
+      origX = node.x; origY = node.y;
+      g.classList.add('dragging');
+      try { g.setPointerCapture(ptrId); } catch (e) {}
+      ev.preventDefault();
+    });
+
+    g.addEventListener('pointermove', (ev) => {
+      if (!dragging || ev.pointerId !== ptrId) return;
+      const scale = getSvgScale();
+      const dx = (ev.clientX - startX) / scale;
+      const dy = (ev.clientY - startY) / scale;
+      if (!hasMoved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) hasMoved = true;
+      node.x = Math.max(60, Math.min(CANVAS_W - 60, origX + dx));
+      node.y = Math.max(50, Math.min(CANVAS_H - 40, origY + dy));
+      g.setAttribute('transform', `translate(${node.x},${node.y})`);
+      // 更新边（简单起见重画整层）
+      clearLayer(edgesLayer);
+      state.edges.forEach(edge => drawEdge(edge));
+    });
+
+    g.addEventListener('pointerup', (ev) => {
+      if (!dragging) return;
+      dragging = false;
+      g.classList.remove('dragging');
+      try { g.releasePointerCapture(ptrId); } catch (e) {}
+      if (!hasMoved) {
+        // 视为点击 → 选中
+        state.selectedId = state.selectedId === node.id ? null : node.id;
+        state.selectedEdgeId = null;
+        renderAll();
+      } else {
+        save();
+        renderAll();
+      }
+    });
+
+    g.addEventListener('pointercancel', () => {
+      dragging = false;
+      g.classList.remove('dragging');
+    });
+
+    // 双击 = 改名
+    g.addEventListener('dblclick', (ev) => {
+      ev.stopPropagation();
+      renameNode(node.id);
+    });
+  }
+
+  function getSvgScale() {
+    // 尝试根据 client width 与 viewBox 计算缩放
+    const rect = svg.getBoundingClientRect();
+    if (rect.width && CANVAS_W) return rect.width / CANVAS_W;
+    return 1;
+  }
+
+  // 点击空白清除选择
+  svg.addEventListener('pointerdown', (ev) => {
+    // 点在 svg 自身或直接的分层 g 上，视为点空白
+    const isBackground = ev.target === svg
+      || (ev.target.tagName === 'g' && ev.target.getAttribute('data-layer'));
+    if (isBackground) {
+      state.selectedId = null;
+      state.selectedEdgeId = null;
+      if (state.linkMode) {
+        state.linkFrom = null;
+      }
+      renderAll();
+    }
+  });
+
+  // ---------- 操作函数 ----------
+  function addEntity(opts = {}) {
+    const n = {
+      id: nextNodeId(),
+      kind: 'entity',
+      name: opts.name || (opts.weak ? '新弱实体' : '新实体'),
+      weak: !!opts.weak,
+      isSubclass: false,
+      attrs: opts.weak ? [{name:'序号', pk:true}] : [{name:'id', pk:true}],
+      x: 120 + (state.nodes.length % 4) * 180,
+      y: 100 + Math.floor(state.nodes.length / 4) * 140,
+    };
+    state.nodes.push(n);
+    state.selectedId = n.id;
+    save(); renderAll();
+    // 立即让用户改名
+    setTimeout(() => renameNode(n.id), 30);
+  }
+  function addRel(opts = {}) {
+    const n = {
+      id: nextNodeId(),
+      kind: 'rel',
+      name: opts.name || (opts.weak ? '弱关系' : '关系'),
+      weak: !!opts.weak,
+      attrs: [],
+      x: 420 + (state.nodes.filter(x=>x.kind==='rel').length % 3) * 140,
+      y: 260 + Math.floor(state.nodes.filter(x=>x.kind==='rel').length / 3) * 100,
+    };
+    state.nodes.push(n);
+    state.selectedId = n.id;
+    save(); renderAll();
+    setTimeout(() => renameNode(n.id), 30);
+  }
+
+  function deleteNode(id) {
+    if (!confirm('删除此节点及其所有连线？')) return;
+    state.nodes = state.nodes.filter(n => n.id !== id);
+    state.edges = state.edges.filter(e => e.fromId !== id && e.toId !== id);
+    if (state.selectedId === id) state.selectedId = null;
+    save(); renderAll();
+  }
+
+  function renameNode(id) {
+    const node = state.nodes.find(n => n.id === id);
+    if (!node) return;
+    const title = node.kind === 'entity' ? (node.weak ? '重命名弱实体' : '重命名实体') : (node.weak ? '重命名弱关系' : '重命名关系');
+    openPromptModal({
+      title,
+      desc: '请输入名称（可用中文或英文）：',
+      initial: node.name || '',
+      onConfirm: (val) => {
+        node.name = val || node.name;
+        save(); renderAll();
+      }
+    });
+  }
+
+  function toggleWeak(id) {
+    const n = state.nodes.find(x => x.id === id);
+    if (!n) return;
+    n.weak = !n.weak;
+    save(); renderAll();
+  }
+
+  function editAttrs(id) {
+    const node = state.nodes.find(n => n.id === id);
+    if (!node) return;
+    // 在页面上打开一个 modal 里面渲染属性编辑器
+    const modal = document.getElementById('prompt-modal');
+    document.getElementById('prompt-title').textContent = (node.kind === 'entity' ? '编辑实体属性' : '编辑关系属性') + '：' + (node.name || '');
+    document.getElementById('prompt-desc').textContent = '每行一个属性；勾选"主键"标注 PK。';
+    const input = document.getElementById('prompt-input');
+    input.style.display = 'none';
+    const extra = document.getElementById('prompt-extra');
+    extra.style.color = '#24292f';
+
+    function render() {
+      let html = '<div class="er-attr-editor">';
+      (node.attrs || []).forEach((a, i) => {
+        html += `<div class="row">
+          <input type="text" value="${escapeHtml(a.name)}" data-idx="${i}" data-role="name" placeholder="属性名" />
+          <label><input type="checkbox" data-idx="${i}" data-role="pk" ${a.pk ? 'checked' : ''}/>PK</label>
+          <button data-idx="${i}" data-role="del" title="删除">✕</button>
+        </div>`;
+      });
+      html += `<div class="row"><button class="add-btn" data-role="add">➕ 添加属性</button></div>`;
+      html += '</div>';
+      extra.innerHTML = html;
+
+      extra.querySelectorAll('input[data-role="name"]').forEach(inp => {
+        inp.addEventListener('input', () => {
+          const idx = parseInt(inp.getAttribute('data-idx'));
+          if (!node.attrs[idx]) node.attrs[idx] = { name:'', pk:false };
+          node.attrs[idx].name = inp.value;
+        });
+      });
+      extra.querySelectorAll('input[data-role="pk"]').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const idx = parseInt(inp.getAttribute('data-idx'));
+          if (!node.attrs[idx]) node.attrs[idx] = { name:'', pk:false };
+          node.attrs[idx].pk = inp.checked;
+        });
+      });
+      extra.querySelectorAll('button[data-role="del"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.getAttribute('data-idx'));
+          node.attrs.splice(idx, 1);
+          render();
+        });
+      });
+      const addBtn = extra.querySelector('button[data-role="add"]');
+      if (addBtn) addBtn.addEventListener('click', () => {
+        node.attrs = node.attrs || [];
+        node.attrs.push({ name:'', pk:false });
+        render();
+      });
+    }
+    render();
+
+    modal.classList.remove('hidden');
+    const cancelBtn = document.getElementById('prompt-cancel');
+    const confirmBtn = document.getElementById('prompt-confirm');
+    const done = () => {
+      // 过滤空 name
+      node.attrs = (node.attrs || []).filter(a => a && a.name && a.name.trim() !== '');
+      modal.classList.add('hidden');
+      input.style.display = '';
+      save(); renderAll();
+    };
+    confirmBtn.onclick = done;
+    cancelBtn.onclick = () => {
+      modal.classList.add('hidden');
+      input.style.display = '';
+      save(); renderAll();
+    };
+  }
+
+  function createEdge(fromId, toId) {
+    if (fromId === toId) return;
+    // 已存在则忽略
+    if (state.edges.some(e => (e.fromId === fromId && e.toId === toId) || (e.fromId === toId && e.toId === fromId))) return;
+    const fromN = state.nodes.find(n => n.id === fromId);
+    const toN = state.nodes.find(n => n.id === toId);
+    if (!fromN || !toN) return;
+    // 建议：一端是实体，一端是关系；如果两端都是实体，创建一个中间关系
+    let f = fromN, t = toN;
+    if (f.kind === 'entity' && t.kind === 'entity') {
+      // 自动插一个"关系"节点
+      const mid = { id: nextNodeId(), kind:'rel', name:'关系', weak:false, attrs:[], x:(f.x+t.x)/2, y:(f.y+t.y)/2 };
+      state.nodes.push(mid);
+      // 两条边
+      state.edges.push({ id: nextEdgeId(), fromId: f.id, toId: mid.id, cardinality:'1', weak:false });
+      state.edges.push({ id: nextEdgeId(), fromId: t.id, toId: mid.id, cardinality:'N', weak:false });
+    } else if (f.kind === 'rel' && t.kind === 'rel') {
+      alert('两端不能都是关系菱形。请选一个实体 + 一个关系菱形。');
+      return;
+    } else {
+      const isWeakEdge = (f.kind === 'rel' && f.weak) || (t.kind === 'rel' && t.weak);
+      state.edges.push({ id: nextEdgeId(), fromId, toId, cardinality:'1', weak:isWeakEdge });
+    }
+    save(); renderAll();
+  }
+
+  function cycleCardinality(edgeId) {
+    const e = state.edges.find(x => x.id === edgeId);
+    if (!e) return;
+    const seq = ['1', 'N', 'M'];
+    const idx = seq.indexOf(e.cardinality);
+    e.cardinality = seq[(idx + 1) % seq.length];
+    save(); renderAll();
+  }
+
+  function setLinkMode(on) {
+    state.linkMode = on;
+    if (!on) state.linkFrom = null;
+    svg.classList.toggle('linking', on);
+    // 通知外部工具栏刷新
+    if (opts && opts.onModeChange) opts.onModeChange(on);
+  }
+
+  function clearCanvas() {
+    if (!confirm('清空整个画布？（本题已绘制的所有节点和连线将丢失）')) return;
+    state.nodes = [];
+    state.edges = [];
+    state.selectedId = null;
+    state.linkFrom = null;
+    save(); renderAll();
+  }
+
+  function loadReferenceGraph() {
+    const L = LESSONS.find(x => x.id === qid);
+    if (!L || !L.reference) return;
+    const g = referenceGraphToDisplay(L.reference);
+    state.nodes = g.nodes.map(n => ({...n}));
+    state.edges = g.edges.map(e => ({...e}));
+    state.selectedId = null;
+    // 重排 id 避免与后续冲突
+    state.nextId = state.nodes.length + state.edges.length + 20;
+    save(); renderAll();
+    viewedAnswers.add(qid);
+    saveViewedAnswers();
+    refreshProgressPanel();
+  }
+
+  function getGraph() {
+    // 用于判分
+    return extractGraph({ nodes: state.nodes, edges: state.edges });
+  }
+
+  let opts = {};
+  function bind(options) { opts = options || {}; }
+
+  // 初次渲染
+  renderAll();
+
+  return {
+    svg,
+    state,
+    renderAll,
+    addEntity,
+    addRel,
+    createEdge,
+    setLinkMode,
+    clearCanvas,
+    loadReferenceGraph,
+    getGraph,
+    bind,
+  };
+}
+// ==================================================================
+// ============ 侧边栏 ============
+// ==================================================================
+function renderNav() {
+  const container = document.getElementById('nav-list');
+  let html = '';
+  GROUPS.forEach(g => {
+    const total = LESSONS.filter(L => L.group === g.key).length;
+    const passed = LESSONS.filter(L => L.group === g.key && progress[L.id] === 'passed').length;
+    html += `<div class="lesson-group ${g.key === currentGroup ? 'active' : ''}" onclick="selectGroup('${g.key}')">
+      <span>${g.symbol}</span>
+      <span>${g.title}</span>
+      <span style="margin-left:auto;font-size:11px;color:#8b949e;font-weight:400;">${passed}/${total}</span>
+    </div>`;
+    if (g.key === currentGroup) {
+      LESSONS.filter(L => L.group === g.key).forEach(L => {
+        const st = progress[L.id] || 'none';
+        html += `<div class="lesson-item ${st}" onclick="scrollToQu('${L.id}')">
+          <span class="lesson-num">${L.id}</span>
+          <span class="title-text">${escapeHtml(L.title)}</span>
+          <span class="status-dot"></span>
+        </div>`;
+      });
+    }
+  });
+  container.innerHTML = html;
+}
+function selectGroup(key) { currentGroup = key; renderNav(); renderMain(key); window.scrollTo({top:0,behavior:'smooth'}); }
+function scrollToQu(id) { const el = document.getElementById('qu-' + id); if (el) el.scrollIntoView({behavior:'smooth', block:'start'}); }
+
+// ==================================================================
+// ============ 主区渲染 ============
+// ==================================================================
+function renderMain(groupKey) {
+  const g = GROUPS.find(x => x.key === groupKey);
+  const lessons = LESSONS.filter(L => L.group === groupKey);
+  const main = document.getElementById('main-content');
+
+  const cheatMap = {
+    'basic':      '<b>本组重点</b>：学会用"➕ 实体"按钮建矩形，双击改名，"编辑属性"给实体加字段；主键属性勾 PK（图上带下划线）。<br>练完 3 题，你就能熟练操作画布上的实体元件。',
+    'onetomany':  '<b>本组重点</b>：一对多的 ER 图 = 两个实体 + 一个菱形关系 + 两根连线（一端标 1，另一端标 N）。<br><b>操作要领</b>：先建两个实体，再点"➕ 关系"建菱形，然后点"🔗 连线"进入连线模式，依次点实体+菱形完成连线，最后点连线中点的圆形数字切换基数（1 / N / M 三档循环）。',
+    'manytomany': '<b>本组重点</b>：多对多的 ER 图 = 两实体 + 一菱形 + 两侧都标 M 或 N（判分器接受任意两端都为多的组合）。关系本身可以带属性（如"成绩"、"贡献排名"），这在 P2 转关系模式时会体现为联结表的额外字段。',
+    'weak':       '<b>本组重点</b>：<b>弱实体</b>用左侧"➕ 弱实体"（虚线双层框），<b>识别关系（弱关系）</b>用"➕ 弱关系"（虚线菱形）。基数仍然是 1:N（父端 1，弱端 N）。<br>弱实体自己可以有"部分主键"（如订单明细的行号），也允许勾 PK 标注。',
+    'inherit':    '<b>本组重点</b>：继承 = 3 个实体 + 2 个"特化 / ISA"菱形关系，基数都是 1:1。<br>父实体画完整属性和 PK；子实体只画独有属性（不必重画父类 PK）。关系名"特化"、"ISA"、"派生"都视为等价。',
+  };
+
+  let html = `
+    <div class="group-header">
+      <h1>${g.symbol} ${g.title}</h1>
+      <div class="subtitle">${g.subtitle}</div>
+      <div class="cheat">${cheatMap[g.key] || ''}</div>
+    </div>
+  `;
+
+  lessons.forEach(L => { html += renderQu(L); });
+  main.innerHTML = html;
+
+  // 为每题初始化 editor 并挂载工具栏
+  lessons.forEach(L => setupQuestion(L));
+}
+
+function renderQu(L) {
+  const st = progress[L.id] || 'none';
+  const stIcon = st === 'passed' ? '✅' : (st === 'attempted' ? '🟠' : '');
+  const dLabel = { easy:'入门', medium:'常规', hard:'进阶' }[L.difficulty] || L.difficulty;
+  const hintsHTML = renderHints(L);
+  return `<div class="qu" id="qu-${L.id}">
+    <div class="qu-head">
+      <span class="qu-num">${L.id}</span>
+      <span class="qu-title">${escapeHtml(L.title)}</span>
+      <span class="qu-diff ${L.difficulty}">${dLabel}</span>
+      <span class="qu-state ${st}" id="qu-state-${L.id}">${stIcon || '未提交'}</span>
+    </div>
+    <div class="qu-scenario">${L.scenario}</div>
+    ${hintsHTML}
+
+    <div class="er-editor">
+      <div class="er-palette">
+        <h4>组件</h4>
+        <button class="er-pal-btn entity"   data-role="add-entity"    data-qid="${L.id}">➕ 实体（矩形）</button>
+        <button class="er-pal-btn weak-ent" data-role="add-weak-ent"  data-qid="${L.id}">➕ 弱实体（虚框）</button>
+        <button class="er-pal-btn rel"      data-role="add-rel"       data-qid="${L.id}">➕ 关系（菱形）</button>
+        <button class="er-pal-btn weak-rel" data-role="add-weak-rel"  data-qid="${L.id}">➕ 弱关系（虚菱）</button>
+        <button class="er-pal-btn mode-link" data-role="toggle-link"  data-qid="${L.id}">🔗 连线模式</button>
+        <div class="er-pal-hint">
+          <b>快捷提示</b>：<br>
+          · 双击节点改名<br>
+          · 选中节点后按钮里可"编辑属性 / 转弱实体"<br>
+          · 连线：先点连线按钮，再点两个节点<br>
+          · 点连线中间圆形切换 1/N/M
+        </div>
+      </div>
+      <div class="er-canvas-wrap">
+        <div class="er-canvas-toolbar">
+          <button class="er-tool-btn primary" data-role="judge" data-qid="${L.id}">🎯 提交判分</button>
+          <button class="er-tool-btn secondary" data-role="ref"   data-qid="${L.id}">💡 显示参考答案</button>
+          <button class="er-tool-btn danger" data-role="clear" data-qid="${L.id}">🧹 清空画布</button>
+          <span class="er-mode-tag" id="mode-tag-${L.id}">✏️ 拖拽模式</span>
+        </div>
+        <div class="er-canvas-container" id="canvas-container-${L.id}"></div>
+      </div>
+    </div>
+
+    <div id="judge-${L.id}"></div>
+
+    <details class="ans-block" id="ans-${L.id}" style="display:none">
+      <summary>💡 查看参考答案（JSON 描述）</summary>
+      <div class="ans-body">
+        ${renderReferenceHTML(L)}
+        ${L.ansNote ? `<div class="ans-note">💬 <b>设计说明</b>：${L.ansNote}</div>` : ''}
+      </div>
+    </details>
+  </div>`;
+}
+
+function renderHints(L) {
+  const arr = L.hints || [];
+  if (arr.length === 0) return '';
+  const items = arr.map((h, i) =>
+    `<div class="hint-item" id="hint-item-${L.id}-${i}"${i > 0 ? ' style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #ffdfb5"' : ''}><b>提示 ${i+1}：</b>${h}</div>`
+  ).join('');
+  return `<details class="hint-block">
+    <summary>💡 分层提示（点击展开，共 ${arr.length} 条）</summary>
+    <div>${items}
+      ${arr.length > 1 ? `<div style="margin-top:8px">
+        ${arr.map((_, i) => i === 0 ? '' : `<button class="er-tool-btn" style="margin-right:6px" onclick="showHint('${L.id}',${i})">显示提示 ${i+1}</button>`).join('')}
+      </div>` : ''}
+    </div>
+  </details>`;
+}
+function showHint(qid, idx) {
+  const el = document.getElementById(`hint-item-${qid}-${idx}`);
+  if (el) el.style.display = '';
+}
+
+function renderReferenceHTML(L) {
+  const ref = L.reference;
+  const entHtml = ref.entities.map(e => {
+    const attrs = (e.attrs || []).map(a => `${a.pk ? '<b><u>' : ''}${escapeHtml(a.name)}${a.pk ? '</u></b>' : ''}`).join('，');
+    const tag = e.weak ? '（弱实体）' : (e.isSubclass ? '（子类）' : '');
+    return `<div>• <b>${escapeHtml(e.name)}</b>${tag}：{ ${attrs || '（暂无属性）'} }</div>`;
+  }).join('');
+  const relHtml = ref.relationships.map(r => {
+    const tag = r.weak ? '（弱关系）' : '';
+    return `<div>• <b>${escapeHtml(r.entity1)}</b> ─「${escapeHtml(r.name)}」${tag}─ <b>${escapeHtml(r.entity2)}</b>（${r.cardinality}）</div>`;
+  }).join('') || '<div>（无关系）</div>';
+  return `<pre>【实体】\n${entHtml.replace(/<[^>]*>/g, '').replace(/^<div>/, '').replace(/&#39;/g,"'")}</pre>` .replace('<pre>', '<pre style="white-space:pre-wrap;padding:0;background:transparent;border:none;">')
+    ; // placeholder; we render below
+}
+
+// Replace the naive renderReferenceHTML - we want proper HTML output
+function renderReferenceHTML(L) {
+  const ref = L.reference;
+  const entHtml = ref.entities.map(e => {
+    const attrs = (e.attrs || []).map(a =>
+      a.pk ? `<u><b>${escapeHtml(a.name)}</b></u>` : escapeHtml(a.name)
+    ).join(', ');
+    const tag = e.weak
+      ? ' <span style="color:#6f42c1;font-size:11px">[弱实体]</span>'
+      : (e.isSubclass ? ' <span style="color:#6f42c1;font-size:11px">[子类]</span>' : '');
+    return `<div style="margin:4px 0">• <b style="color:#0550ae">${escapeHtml(e.name)}</b>${tag}：{ ${attrs || '（暂无属性）'} }</div>`;
+  }).join('');
+  const relHtml = ref.relationships.length ? ref.relationships.map(r => {
+    const tag = r.weak ? ' <span style="color:#d29922;font-size:11px">[弱关系]</span>' : '';
+    return `<div style="margin:4px 0">• <b style="color:#0550ae">${escapeHtml(r.entity1)}</b> ─「<b style="color:#7d4e00">${escapeHtml(r.name)}</b>」${tag}─ <b style="color:#0550ae">${escapeHtml(r.entity2)}</b>（<code style="color:#cf222e">${r.cardinality}</code>）</div>`;
+  }).join('') : '<div style="color:#8b949e">（本题为单实体，无关系）</div>';
+  return `<div><b>【实体】</b></div>${entHtml}<div style="margin-top:6px"><b>【关系】</b></div>${relHtml}`;
+}
+
+// ==================================================================
+// ============ 单题装配 ============
+// ==================================================================
+function setupQuestion(L) {
+  const qid = L.id;
+  const container = document.getElementById('canvas-container-' + qid);
+  if (!container) return;
+  container.innerHTML = '';
+  const editor = createEditor(qid, container);
+  editors[qid] = editor;
+
+  const modeTag = document.getElementById('mode-tag-' + qid);
+  editor.bind({
+    onModeChange: (linking) => {
+      if (modeTag) {
+        modeTag.textContent = linking ? '🔗 连线模式（点两个节点）' : '✏️ 拖拽模式';
+        modeTag.classList.toggle('linking', linking);
+      }
+      // 高亮连线按钮
+      document.querySelectorAll(`.er-pal-btn.mode-link[data-qid="${qid}"]`).forEach(b => {
+        b.classList.toggle('active', linking);
+      });
+    }
+  });
+
+  // 绑定 palette 按钮
+  document.querySelectorAll(`.er-pal-btn[data-qid="${qid}"]`).forEach(btn => {
+    btn.onclick = () => {
+      const role = btn.getAttribute('data-role');
+      if (role === 'add-entity') editor.addEntity({});
+      else if (role === 'add-weak-ent') editor.addEntity({ weak: true });
+      else if (role === 'add-rel') editor.addRel({});
+      else if (role === 'add-weak-rel') editor.addRel({ weak: true });
+      else if (role === 'toggle-link') editor.setLinkMode(!editor.state.linkMode);
+    };
+  });
+
+  // 绑定工具栏
+  document.querySelectorAll(`.er-tool-btn[data-qid="${qid}"]`).forEach(btn => {
+    btn.onclick = () => {
+      const role = btn.getAttribute('data-role');
+      if (role === 'judge') doJudge(qid);
+      else if (role === 'ref') {
+        const ans = document.getElementById('ans-' + qid);
+        if (ans) ans.style.display = '';
+        editor.loadReferenceGraph();
+      }
+      else if (role === 'clear') editor.clearCanvas();
+    };
+  });
+}
+
+// ==================================================================
+// ============ 判分入口 ============
+// ==================================================================
+function doJudge(qid) {
+  const L = LESSONS.find(x => x.id === qid);
+  const editor = editors[qid];
+  if (!L || !editor) return;
+
+  const stuGraph = editor.getGraph();
+
+  // 主答案 + 备选答案
+  const candidates = [L.reference].concat(L.altReferences || []);
+  let bestResult = null;
+  for (const ref of candidates) {
+    const r = judgeGraph(ref, stuGraph);
+    if (!bestResult || (r.verdict === 'pass') || (bestResult.verdict !== 'pass' && r.issues.length < bestResult.issues.length)) {
+      bestResult = r;
+    }
+  }
+
+  // 渲染结果
+  const box = document.getElementById('judge-' + qid);
+  if (!box) return;
+
+  let cls = '', title = '';
+  if (bestResult.verdict === 'pass') { cls = 'pass'; title = '🎉 完全正确！所有实体、属性、关系与基数都对上了。'; }
+  else if (bestResult.verdict === 'partial') { cls = 'partial'; title = '📝 部分正确 —— 已识别出主要结构，仍有细节需要完善：'; }
+  else { cls = 'fail'; title = '❌ 结构差异较大 —— 请对照参考答案检查：'; }
+
+  const m = bestResult.metrics;
+  const metricsHtml = `
+    <span class="metric ${bestResult.detail.missEnts.length === 0 && bestResult.detail.wrongAttrEnts.length === 0 ? 'ok' : 'miss'}">实体 ${m.entities}</span>
+    <span class="metric ${bestResult.detail.wrongAttrEnts.length === 0 ? 'ok' : 'warn'}">属性 ${m.attrOK}</span>
+    <span class="metric ${bestResult.detail.missRels.length === 0 && bestResult.detail.wrongCardRels.length === 0 ? 'ok' : 'miss'}">关系 ${m.relationships}</span>
+  `;
+
+  const issueList = bestResult.issues.length
+    ? '<ul>' + bestResult.issues.map(x => `<li>${x}</li>`).join('') + '</ul>'
+    : '';
+
+  box.innerHTML = `<div class="er-judge-result ${cls}">
+    <h4>${title}</h4>
+    <div>${metricsHtml}</div>
+    ${issueList}
+  </div>`;
+
+  // 更新状态
+  if (bestResult.verdict === 'pass') {
+    progress[qid] = 'passed';
+  } else {
+    if (progress[qid] !== 'passed') progress[qid] = 'attempted';
+  }
+  saveProgress();
+  const stEl = document.getElementById('qu-state-' + qid);
+  if (stEl) {
+    stEl.className = 'qu-state ' + (progress[qid] || '');
+    stEl.textContent = progress[qid] === 'passed' ? '✅ 通过' : (progress[qid] === 'attempted' ? '🟠 尝试' : '未提交');
+  }
+  renderNav();
+  refreshProgressPanel();
+}
+
+// ==================================================================
+// ============ 进度 ============
+// ==================================================================
+function resetProgress() {
+  if (!confirm('确定清除所有进度？（仅重置通过/尝试状态，不删除已画的图）')) return;
+  progress = {}; viewedAnswers = new Set();
+  saveProgress(); saveViewedAnswers();
+  renderNav(); refreshProgressPanel(); renderMain(currentGroup);
+}
+function clearAllProgress() {
+  if (!confirm('确定清空所有进度？\n包含"通过"、"尝试"和"看过答案"记录。')) return;
+  progress = {}; viewedAnswers = new Set();
+  saveProgress(); saveViewedAnswers();
+  renderNav(); refreshProgressPanel(); renderMain(currentGroup);
+}
+function clearAllGraphs() {
+  if (!confirm('确定清空所有题目已绘制的 ER 图？\n此操作不可恢复。')) return;
+  LESSONS.forEach(L => clearGraph(L.id));
+  renderMain(currentGroup);
+}
+
+function refreshProgressPanel() {
+  const total = LESSONS.length;
+  const passed = Object.values(progress).filter(v => v === 'passed').length;
+  const attempted = Object.keys(progress).filter(k => progress[k] === 'attempted').length;
+  const viewed = viewedAnswers.size;
+  const pct = total > 0 ? Math.round(passed / total * 100) : 0;
+
+  const pt = document.getElementById('progress-text');
+  const pf = document.getElementById('progress-bar-inner');
+  if (pt) pt.textContent = `进度 ${passed} / ${total}`;
+  if (pf) pf.style.width = pct + '%';
+
+  const el = id => document.getElementById(id);
+  if (!el('pp-total-passed')) return;
+  el('pp-total-passed').textContent = passed;
+  el('pp-total-total').textContent = total;
+  el('pp-bar-fill').style.width = pct + '%';
+  el('pp-pct').textContent = pct + '%';
+  el('pp-stat-passed').textContent = passed;
+  el('pp-stat-attempted').textContent = attempted;
+  el('pp-stat-viewed').textContent = viewed;
+
+  const groupsHtml = GROUPS.map(g => {
+    const gTotal = LESSONS.filter(L => L.group === g.key).length;
+    const gPassed = LESSONS.filter(L => L.group === g.key && progress[L.id] === 'passed').length;
+    const gPct = gTotal > 0 ? Math.round(gPassed / gTotal * 100) : 0;
+    return `<div class="pp-group-wrap">
+      <div class="pp-group">
+        <div class="pp-group-name"><span>${g.symbol}</span><span>${g.title}</span></div>
+        <div class="pp-group-val">${gPassed}/${gTotal}</div>
+      </div>
+      <div class="pp-mini-bar"><div class="pp-mini-bar-fill" style="width:${gPct}%"></div></div>
+    </div>`;
+  }).join('');
+  el('pp-groups').innerHTML = groupsHtml;
+}
+
+// ==================================================================
+// ============ 学号弹窗 + 学习报告 ============
+// ==================================================================
+function exportReport() {
+  const modal = document.getElementById('student-id-modal');
+  const input = document.getElementById('student-id-input');
+  const cancelBtn = document.getElementById('student-id-cancel');
+  const confirmBtn = document.getElementById('student-id-confirm');
+  const savedId = localStorage.getItem('sql-lab-er-student-id') || localStorage.getItem('sqlplay_student_id') || '';
+  input.value = savedId;
+  modal.classList.remove('hidden');
+  setTimeout(() => input.focus(), 50);
+  const doExport = () => {
+    const studentId = input.value.trim();
+    if (!studentId) { input.focus(); return; }
+    localStorage.setItem('sql-lab-er-student-id', studentId);
+    modal.classList.add('hidden');
+    doExportWithId(studentId);
+  };
+  confirmBtn.onclick = doExport;
+  cancelBtn.onclick = () => modal.classList.add('hidden');
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') doExport();
+    if (e.key === 'Escape') modal.classList.add('hidden');
+  };
+}
+
+function doExportWithId(studentId) {
+  const total = LESSONS.length;
+  const passedIds = LESSONS.filter(L => progress[L.id] === 'passed').map(L => L.id);
+  const attemptedIds = LESSONS.filter(L => progress[L.id] === 'attempted').map(L => L.id);
+  const viewedIds = [...viewedAnswers];
+  const submitTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const ts = new Date().toISOString().slice(0, 10);
+  const rate = total > 0 ? (passedIds.length / total * 100).toFixed(1) : '0.0';
+  const pageLabel = 'ER 建模';
+
+  const groupRows = GROUPS.map(g => {
+    const gLessons = LESSONS.filter(L => L.group === g.key);
+    const gTotal = gLessons.length;
+    const gPassed = gLessons.filter(L => progress[L.id] === 'passed').length;
+    const gRate = gTotal > 0 ? Math.round(gPassed / gTotal * 100) : 0;
+    return '<tr><td>' + escapeHtml(g.symbol + ' ' + g.title) + '</td>'
+      + '<td class="num-cell">' + gTotal + '</td>'
+      + '<td class="num-cell">' + gPassed + '</td>'
+      + '<td><span class="rate-bar"><span class="rate-bar-fill" style="width:' + gRate + '%"></span></span><span class="rate-num">' + gRate + '%</span></td></tr>';
+  }).join('');
+
+  const badgesOf = (ids, cls) => ids.length
+    ? ids.map(id => '<span class="badge ' + cls + '">' + escapeHtml(id) + '</span>').join('')
+    : '<div class="empty">（无）</div>';
+
+  const html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<title>SQL练习场·ER建模学习报告 - ' + escapeHtml(studentId) + '</title>\n<style>\n'
+    + '* { box-sizing: border-box; }\n'
+    + 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; max-width: 960px; margin: 40px auto; padding: 0 24px; color: #24292f; background: #f6f8fa; line-height: 1.5; }\n'
+    + '.header-card { background: linear-gradient(135deg, #0969da, #218bff); color: #fff; padding: 24px 28px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(9,105,218,0.2); }\n'
+    + '.header-card h1 { margin: 0 0 14px; font-size: 22px; font-weight: 600; }\n'
+    + '.info-row { display: flex; flex-wrap: wrap; gap: 32px; font-size: 14px; }\n'
+    + '.info-item { display: flex; flex-direction: column; gap: 2px; }\n'
+    + '.info-label { opacity: 0.75; font-size: 11px; }\n'
+    + '.info-value { font-size: 15px; font-weight: 500; }\n'
+    + '.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }\n'
+    + '.stat-card { background: #fff; padding: 16px; border-radius: 8px; text-align: center; border: 1px solid #d0d7de; }\n'
+    + '.stat-card .num { font-size: 28px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }\n'
+    + '.stat-card .label { font-size: 12px; color: #57606a; margin-top: 4px; }\n'
+    + '.stat-card.rate .num { color: #0969da; }\n'
+    + '.stat-card.passed .num { color: #1a7f37; }\n'
+    + '.stat-card.attempted .num { color: #bf8700; }\n'
+    + '.stat-card.viewed .num { color: #6e7781; }\n'
+    + '.section-title { font-size: 16px; font-weight: 600; margin: 24px 0 12px; padding-left: 10px; border-left: 3px solid #0969da; color: #24292f; }\n'
+    + '.section-title .count { font-weight: normal; color: #57606a; font-size: 14px; margin-left: 4px; }\n'
+    + 'table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }\n'
+    + 'thead { background: #f6f8fa; }\n'
+    + 'th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #d0d7de; font-size: 14px; }\n'
+    + 'tbody tr:last-child td { border-bottom: none; }\n'
+    + 'th { color: #57606a; font-weight: 600; }\n'
+    + 'td.num-cell { text-align: right; font-variant-numeric: tabular-nums; }\n'
+    + '.rate-bar { display: inline-block; width: 110px; height: 8px; background: #eaeef2; border-radius: 4px; vertical-align: middle; overflow: hidden; }\n'
+    + '.rate-bar-fill { display: block; height: 100%; background: #1a7f37; }\n'
+    + '.rate-num { display: inline-block; margin-left: 8px; font-variant-numeric: tabular-nums; color: #24292f; font-size: 13px; }\n'
+    + '.badges { display: flex; flex-wrap: wrap; gap: 6px; background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #d0d7de; }\n'
+    + '.badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-family: "SF Mono", Consolas, "Courier New", monospace; }\n'
+    + '.badge.passed { background: #dafbe1; color: #1a7f37; border: 1px solid #b5f0c1; }\n'
+    + '.badge.attempted { background: #fff8c5; color: #7d4e00; border: 1px solid #f0e68a; }\n'
+    + '.badge.viewed { background: #f6f8fa; color: #6e7781; border: 1px solid #d0d7de; }\n'
+    + '.empty { color: #8b949e; font-size: 13px; padding: 4px 0; }\n'
+    + '.footer { margin-top: 40px; text-align: center; color: #8b949e; font-size: 12px; padding: 16px; }\n'
+    + '@media print { body { background: #fff; margin: 20px auto; } .header-card, .stat-card, table, .badges { box-shadow: none; } }\n'
+    + '</style>\n</head>\n<body>\n'
+    + '<div class="header-card">\n'
+    + '  <h1>SQL 练习场 · ER 建模学习报告</h1>\n'
+    + '  <div class="info-row">\n'
+    + '    <div class="info-item"><span class="info-label">学号</span><span class="info-value">' + escapeHtml(studentId) + '</span></div>\n'
+    + '    <div class="info-item"><span class="info-label">提交时间</span><span class="info-value">' + escapeHtml(submitTime) + '</span></div>\n'
+    + '    <div class="info-item"><span class="info-label">练习模块</span><span class="info-value">' + escapeHtml(pageLabel) + '</span></div>\n'
+    + '  </div>\n'
+    + '</div>\n'
+    + '<div class="stats-row">\n'
+    + '  <div class="stat-card rate"><div class="num">' + rate + '%</div><div class="label">通过率</div></div>\n'
+    + '  <div class="stat-card passed"><div class="num">' + passedIds.length + '</div><div class="label">通过</div></div>\n'
+    + '  <div class="stat-card attempted"><div class="num">' + attemptedIds.length + '</div><div class="label">尝试未通过</div></div>\n'
+    + '  <div class="stat-card viewed"><div class="num">' + viewedIds.length + '</div><div class="label">看过答案</div></div>\n'
+    + '</div>\n'
+    + '<div class="section-title">分组明细（按模式）</div>\n'
+    + '<table><thead><tr><th>模式分组</th><th>总数</th><th>通过数</th><th>通过率</th></tr></thead><tbody>' + groupRows + '</tbody></table>\n'
+    + '<div class="section-title">已通过题目<span class="count">（' + passedIds.length + '）</span></div>\n'
+    + '<div class="badges">' + badgesOf(passedIds, 'passed') + '</div>\n'
+    + '<div class="section-title">尝试未通过题目<span class="count">（' + attemptedIds.length + '）</span></div>\n'
+    + '<div class="badges">' + badgesOf(attemptedIds, 'attempted') + '</div>\n'
+    + '<div class="section-title">看过答案的题目<span class="count">（' + viewedIds.length + '）</span></div>\n'
+    + '<div class="badges">' + badgesOf(viewedIds, 'viewed') + '</div>\n'
+    + '<div class="footer">SQL 练习场 · ER 建模 · 学号 ' + escapeHtml(studentId) + ' · ' + escapeHtml(submitTime) + ' · 总题数 ' + total + '</div>\n'
+    + '</body>\n</html>';
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `SQL练习场_ER建模学习报告_${studentId}_${ts}.html`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+
+// ==================================================================
+// ============ 工具 ============
+// ==================================================================
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+// ==================================================================
+// ============ 三阶段自测（页面加载时自动跑） ============
+// ==================================================================
+function runSelfTest() {
+  const results = [];
+  let pass = 0, fail = 0;
+  function T(name, cond, detail) {
+    if (cond) { pass++; results.push('PASS: ' + name); }
+    else { fail++; results.push('FAIL: ' + name + (detail ? ' :: ' + detail : '')); }
+  }
+
+  // ---------- 阶段 1：核心工具函数 ----------
+
+  // 1. canonical 同义词识别
+  T('canonical: 员工/employee 同义', canonical('员工', 'entity') === canonical('employee', 'entity'));
+  T('canonical: 学生/Student 大小写宽松', canonical('学生', 'entity') === canonical('Student', 'entity'));
+  T('canonical: emp_id/empid 下划线宽松', canonical('emp_id', 'attr') === canonical('empid', 'attr'));
+  T('canonical: 特化/ISA 同义', canonical('特化', 'relationship') === canonical('ISA', 'relationship'));
+
+  // 2. 反例：本不相关的词不能被误判为同义
+  T('canonical: 图书 ≠ 员工', canonical('图书', 'entity') !== canonical('员工', 'entity'));
+  T('canonical: 姓名 ≠ 学号', canonical('姓名', 'attr') !== canonical('学号', 'attr'));
+
+  // 3. normalizeCardinality
+  T('card: 1+1 → 1:1', normalizeCardinality('1', '1') === '1:1');
+  T('card: 1+N → 1:N', normalizeCardinality('1', 'N') === '1:N');
+  T('card: N+1 → 1:N (反向归一)', normalizeCardinality('N', '1') === '1:N');
+  T('card: M+N → M:N', normalizeCardinality('M', 'N') === 'M:N');
+  T('card: N+N → M:N', normalizeCardinality('N', 'N') === 'M:N');
+
+  // 4. extractGraph 空图
+  const emptyExtract = extractGraph({ nodes: [], edges: [] });
+  T('extractGraph: 空图', emptyExtract.entities.length === 0 && emptyExtract.relationships.length === 0);
+
+  // 5. extractGraph 单实体
+  const singleE = extractGraph({
+    nodes: [{ id:'e1', kind:'entity', name:'图书', attrs:[{name:'书号', pk:true}] }],
+    edges: []
+  });
+  T('extractGraph: 单实体属性', singleE.entities.length === 1 && singleE.entities[0].name === '图书' && singleE.entities[0].attrs[0].pk === true);
+
+  // 6. extractGraph 二元关系
+  const rel = extractGraph({
+    nodes: [
+      { id:'e1', kind:'entity', name:'部门', attrs:[{name:'部门编号', pk:true}] },
+      { id:'e2', kind:'entity', name:'员工', attrs:[{name:'工号', pk:true}] },
+      { id:'r1', kind:'rel', name:'拥有' },
+    ],
+    edges: [
+      { id:'ed1', fromId:'e1', toId:'r1', cardinality:'1' },
+      { id:'ed2', fromId:'e2', toId:'r1', cardinality:'N' },
+    ]
+  });
+  T('extractGraph: 二元关系 1:N', rel.relationships.length === 1 && rel.relationships[0].cardinality === '1:N');
+
+  // 7. compareAttrs 缺失
+  const attrRes1 = compareAttrs(
+    [{name:'书号', pk:true},{name:'书名', pk:false},{name:'作者', pk:false}],
+    [{name:'书号', pk:true},{name:'书名', pk:false}]
+  );
+  T('compareAttrs: 缺失属性检出', !attrRes1.ok && attrRes1.missing.length === 1);
+
+  // 8. compareAttrs PK 缺失
+  const attrRes2 = compareAttrs(
+    [{name:'书号', pk:true}],
+    [{name:'书号', pk:false}]
+  );
+  T('compareAttrs: 未标 PK 检出', !attrRes2.ok && attrRes2.wrongPK.length === 1);
+
+  // 9. compareAttrs 同义
+  const attrRes3 = compareAttrs(
+    [{name:'工号', pk:true}, {name:'姓名', pk:false}],
+    [{name:'emp_id', pk:true}, {name:'name', pk:false}]
+  );
+  T('compareAttrs: 中英文同义通过', attrRes3.ok);
+
+  // 10. judgeGraph 单实体通过
+  const jRes1 = judgeGraph(
+    LESSONS.find(x => x.id === 'E1').reference,
+    { entities: [{name:'图书', attrs:[
+      {name:'书号', pk:true},{name:'书名', pk:false},{name:'作者', pk:false},{name:'定价', pk:false}
+    ]}], relationships: [] }
+  );
+  T('judgeGraph: E1 参考图通过', jRes1.verdict === 'pass', JSON.stringify(jRes1.issues));
+
+  // 11. judgeGraph 缺属性 → partial
+  const jRes2 = judgeGraph(
+    LESSONS.find(x => x.id === 'E1').reference,
+    { entities: [{name:'图书', attrs:[
+      {name:'书号', pk:true},{name:'书名', pk:false}
+    ]}], relationships: [] }
+  );
+  T('judgeGraph: E1 缺属性 → partial', jRes2.verdict === 'partial', jRes2.verdict);
+
+  // 12. judgeGraph M1 参考通过
+  const M1 = LESSONS.find(x => x.id === 'M1');
+  const jRes3 = judgeGraph(
+    M1.reference,
+    {
+      entities: [
+        {name:'部门', attrs:[{name:'部门编号', pk:true},{name:'部门名称', pk:false}]},
+        {name:'员工', attrs:[{name:'工号', pk:true},{name:'姓名', pk:false}]}
+      ],
+      relationships: [
+        {name:'拥有', entity1:'部门', entity2:'员工', cardinality:'1:N'}
+      ]
+    }
+  );
+  T('judgeGraph: M1 参考图通过', jRes3.verdict === 'pass', JSON.stringify(jRes3.issues));
+
+  // 13. judgeGraph 基数反向 (1:N 反向为 N:1 归一化后仍应通过)
+  const jRes4 = judgeGraph(
+    M1.reference,
+    {
+      entities: [
+        {name:'部门', attrs:[{name:'部门编号', pk:true},{name:'部门名称', pk:false}]},
+        {name:'员工', attrs:[{name:'工号', pk:true},{name:'姓名', pk:false}]}
+      ],
+      relationships: [
+        {name:'拥有', entity1:'员工', entity2:'部门', cardinality:'1:N'} // 反向写
+      ]
+    }
+  );
+  T('judgeGraph: 关系 entity1/entity2 顺序无关', jRes4.verdict === 'pass', JSON.stringify(jRes4.issues));
+
+  // 14. judgeGraph 关系名同义 (拥有 vs 属于)
+  const jRes5 = judgeGraph(
+    M1.reference,
+    {
+      entities: [
+        {name:'部门', attrs:[{name:'部门编号', pk:true},{name:'部门名称', pk:false}]},
+        {name:'员工', attrs:[{name:'工号', pk:true},{name:'姓名', pk:false}]}
+      ],
+      relationships: [
+        {name:'属于', entity1:'部门', entity2:'员工', cardinality:'1:N'}
+      ]
+    }
+  );
+  T('judgeGraph: 关系名同义（拥有/属于）', jRes5.verdict === 'pass', JSON.stringify(jRes5.issues));
+
+  // 15. judgeGraph 基数错误 → partial
+  const jRes6 = judgeGraph(
+    M1.reference,
+    {
+      entities: [
+        {name:'部门', attrs:[{name:'部门编号', pk:true},{name:'部门名称', pk:false}]},
+        {name:'员工', attrs:[{name:'工号', pk:true},{name:'姓名', pk:false}]}
+      ],
+      relationships: [
+        {name:'拥有', entity1:'部门', entity2:'员工', cardinality:'M:N'}
+      ]
+    }
+  );
+  T('judgeGraph: 基数错误检出', jRes6.verdict === 'partial' && jRes6.detail.wrongCardRels.length === 1, JSON.stringify(jRes6.issues));
+
+  // ---------- 阶段 2：所有已实现题目参考答案自身可通过 ----------
+  LESSONS.forEach(L => {
+    // 用参考图自身做学生答案，应完全通过
+    const stuGraph = { entities: JSON.parse(JSON.stringify(L.reference.entities)),
+                       relationships: JSON.parse(JSON.stringify(L.reference.relationships)) };
+    const r = judgeGraph(L.reference, stuGraph);
+    T(`[Stage2] ${L.id} 参考答案自通过`, r.verdict === 'pass', JSON.stringify(r.issues));
+  });
+
+  // ---------- 阶段 3：学生变体测试 ----------
+
+  // 变体 1：N1 学生使用英文名
+  const N1 = LESSONS.find(x => x.id === 'N1');
+  const stuN1 = {
+    entities: [
+      {name:'Student', attrs:[{name:'sid', pk:true},{name:'name', pk:false}]},
+      {name:'Course',  attrs:[{name:'cid', pk:true},{name:'cname', pk:false},{name:'credit', pk:false}]},
+    ],
+    relationships: [
+      {name:'take', entity1:'Student', entity2:'Course', cardinality:'M:N'}
+    ]
+  };
+  const r_n1 = judgeGraph(N1.reference, stuN1);
+  T('[Stage3] N1 英文实体名+同义关系通过', r_n1.verdict === 'pass', JSON.stringify(r_n1.issues));
+
+  // 变体 2：M2 属性顺序调换
+  const M2 = LESSONS.find(x => x.id === 'M2');
+  const stuM2 = {
+    entities: [
+      {name:'图书', attrs:[{name:'定价', pk:false},{name:'书名', pk:false},{name:'书号', pk:true}]},
+      {name:'出版社', attrs:[{name:'出版社名称', pk:false},{name:'出版社编号', pk:true}]},
+    ],
+    relationships: [
+      {name:'发行', entity1:'出版社', entity2:'图书', cardinality:'1:N'}
+    ]
+  };
+  const r_m2 = judgeGraph(M2.reference, stuM2);
+  T('[Stage3] M2 属性顺序调换+关系名同义通过', r_m2.verdict === 'pass', JSON.stringify(r_m2.issues));
+
+  // 变体 3：W1 弱实体标注允许缺失（宽松判分：弱实体标注不匹配算部分正确）
+  const W1 = LESSONS.find(x => x.id === 'W1');
+  const stuW1 = {
+    entities: [
+      {name:'订单', attrs:[{name:'订单号', pk:true},{name:'下单日期', pk:false}]},
+      {name:'订单明细', weak:true, attrs:[{name:'行号', pk:true},{name:'商品名', pk:false},{name:'数量', pk:false}]},
+    ],
+    relationships: [
+      {name:'包含', entity1:'订单', entity2:'订单明细', cardinality:'1:N', weak:true}
+    ]
+  };
+  const r_w1 = judgeGraph(W1.reference, stuW1);
+  T('[Stage3] W1 参考图完整通过', r_w1.verdict === 'pass', JSON.stringify(r_w1.issues));
+
+  // 变体 4：I1 继承关系不同名（学生用 "ISA" 而不是"特化"）
+  const I1 = LESSONS.find(x => x.id === 'I1');
+  const stuI1 = {
+    entities: [
+      {name:'人员', attrs:[{name:'人员编号', pk:true},{name:'姓名', pk:false},{name:'出生日期', pk:false}]},
+      {name:'学生', isSubclass:true, attrs:[{name:'专业', pk:false}]},
+      {name:'教师', isSubclass:true, attrs:[{name:'职称', pk:false}]},
+    ],
+    relationships: [
+      {name:'ISA', entity1:'人员', entity2:'学生', cardinality:'1:1'},
+      {name:'ISA', entity1:'人员', entity2:'教师', cardinality:'1:1'},
+    ]
+  };
+  const r_i1 = judgeGraph(I1.reference, stuI1);
+  T('[Stage3] I1 关系名"ISA"变体通过', r_i1.verdict === 'pass', JSON.stringify(r_i1.issues));
+
+  // 变体 5：E3 完全空答 → fail
+  const E3 = LESSONS.find(x => x.id === 'E3');
+  const r_empty = judgeGraph(E3.reference, { entities: [], relationships: [] });
+  T('[Stage3] E3 空图 → fail', r_empty.verdict === 'fail', r_empty.verdict);
+
+  // 变体 6：M3 用英文实体名 + 中文关系名
+  const M3 = LESSONS.find(x => x.id === 'M3');
+  const stuM3 = {
+    entities: [
+      {name:'customer', attrs:[{name:'cust_id', pk:true},{name:'name', pk:false},{name:'phone', pk:false}]},
+      {name:'orders', attrs:[{name:'order_id', pk:true},{name:'order_date', pk:false},{name:'total_amount', pk:false}]},
+    ],
+    relationships: [
+      {name:'下单', entity1:'customer', entity2:'orders', cardinality:'1:N'}
+    ]
+  };
+  const r_m3 = judgeGraph(M3.reference, stuM3);
+  T('[Stage3] M3 英文实体名混中文关系名通过', r_m3.verdict === 'pass', JSON.stringify(r_m3.issues));
+
+  // 变体 7：extract 从原始 graph 到 relationships（含反向基数）
+  const extRes = extractGraph({
+    nodes: [
+      { id:'e1', kind:'entity', name:'学生', attrs:[{name:'学号', pk:true}] },
+      { id:'e2', kind:'entity', name:'课程', attrs:[{name:'课程号', pk:true}] },
+      { id:'r1', kind:'rel', name:'选修' },
+    ],
+    edges: [
+      { id:'ed1', fromId:'e1', toId:'r1', cardinality:'M' },
+      { id:'ed2', fromId:'e2', toId:'r1', cardinality:'N' },
+    ]
+  });
+  T('[Stage3] extractGraph 生成 M:N 关系', extRes.relationships.length === 1 && extRes.relationships[0].cardinality === 'M:N');
+
+  // ---------- 汇总输出 ----------
+  const tag = `[ER拖拽判分自测] PASS ${pass}, FAIL ${fail}${fail === 0 ? ' ✅' : ' ❌'}`;
+  if (fail === 0) {
+    console.log('%c' + tag, 'color:#1a7f37;font-weight:bold');
+  } else {
+    console.error(tag);
+    results.filter(r => r.startsWith('FAIL')).forEach(r => console.error('  ' + r));
+  }
+  return { pass, fail, results };
+}
+
+// ==================================================================
+// ============ 启动 ============
+// ==================================================================
+function init() {
+  try {
+    runSelfTest();
+  } catch (e) {
+    console.error('[ER拖拽判分自测] 自测运行异常：', e);
+  }
+  renderNav();
+  renderMain(currentGroup);
+  refreshProgressPanel();
+}
+init();
+</script>
+</body>
+</html>

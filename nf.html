@@ -1,0 +1,1925 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL 练习场 · 范式训练 · v0.13</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f6f8fa;
+    color: #24292f;
+    font-size: 14px;
+  }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ============ Header ============ */
+  header {
+    background: linear-gradient(90deg, #0969da 0%, #218bff 100%);
+    color: white;
+    padding: 10px 24px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: 48px;
+  }
+  header h1 { margin: 0; font-size: 17px; font-weight: 600; }
+  header h1 .page-label {
+    background: rgba(255,255,255,0.22);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-left: 8px;
+    letter-spacing: 0.5px;
+  }
+  header .status { font-size: 13px; opacity: 0.95; }
+
+  /* ============ Top Nav ============ */
+  nav.topnav {
+    background: #ffffff;
+    border-bottom: 1px solid #d0d7de;
+    padding: 0 24px;
+    display: flex;
+    gap: 0;
+    position: sticky;
+    top: 48px;
+    z-index: 99;
+    height: 44px;
+    align-items: stretch;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  nav.topnav a {
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    font-size: 14px;
+    color: #57606a;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    font-weight: 500;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  nav.topnav a:hover:not(.active) { color: #0969da; text-decoration: none; }
+  nav.topnav a.active {
+    color: #0969da;
+    border-bottom-color: #0969da;
+    font-weight: 600;
+  }
+
+  /* ============ Layout ============ */
+  .layout {
+    display: grid;
+    grid-template-columns: 220px 1fr 300px;
+    min-height: calc(100vh - 92px);
+  }
+  @media (max-width: 1400px) {
+    .layout { grid-template-columns: 220px 1fr; }
+    .progress-panel { display: none !important; }
+  }
+
+  aside.sidebar {
+    background: #ffffff;
+    border-right: 1px solid #d0d7de;
+    padding: 12px 0;
+    position: sticky;
+    top: 92px;
+    height: calc(100vh - 92px);
+    overflow-y: auto;
+  }
+
+  .progress-panel {
+    background: #ffffff;
+    border-left: 1px solid #d0d7de;
+    padding: 16px;
+    position: sticky;
+    top: 92px;
+    height: calc(100vh - 92px);
+    overflow-y: auto;
+    font-size: 13px;
+  }
+  .progress-panel h3 {
+    margin: 0 0 12px; font-size: 14px; color: #24292f;
+    display: flex; align-items: center; gap: 6px;
+    padding-bottom: 10px; border-bottom: 2px solid #0969da;
+  }
+  .pp-section { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #eaecef; }
+  .pp-section:last-of-type { border-bottom: none; }
+  .pp-section-title {
+    font-size: 11px; color: #8b949e; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 10px; font-weight: 600;
+  }
+  .pp-total { text-align: center; padding: 8px 0; }
+  .pp-total-num { font-size: 34px; font-weight: 700; color: #0969da; line-height: 1; }
+  .pp-total-num .pp-slash { color: #8b949e; font-weight: 400; font-size: 22px; }
+  .pp-total-label { color: #57606a; font-size: 12px; margin-top: 4px; }
+  .pp-bar { height: 8px; background: #eaecef; border-radius: 4px; overflow: hidden; margin: 12px 0 4px; }
+  .pp-bar-fill {
+    height: 100%; background: linear-gradient(90deg, #0969da, #2da44e);
+    border-radius: 4px; transition: width 0.4s ease;
+  }
+  .pp-pct { text-align: right; font-size: 11px; color: #57606a; }
+  .pp-stat {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; font-size: 13px; color: #24292f;
+  }
+  .pp-stat-label { display: flex; align-items: center; gap: 6px; }
+  .pp-stat-value { font-weight: 600; }
+  .pp-group-wrap { margin-bottom: 8px; }
+  .pp-group {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 0; font-size: 12px; color: #24292f;
+  }
+  .pp-group-name { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+  .pp-group-name span:last-child {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pp-group-val { color: #57606a; font-size: 11px; font-family: monospace; flex-shrink: 0; margin-left: 8px; }
+  .pp-mini-bar { height: 3px; background: #eaecef; border-radius: 2px; margin-top: 2px; overflow: hidden; }
+  .pp-mini-bar-fill { height: 100%; background: #0969da; border-radius: 2px; transition: width 0.4s ease; }
+  .pp-btn {
+    width: 100%; padding: 8px; margin-bottom: 8px;
+    border: 1px solid #d0d7de; background: white; border-radius: 6px;
+    font-size: 12px; cursor: pointer; color: #24292f; transition: all 0.15s;
+  }
+  .pp-btn:hover { background: #f6f8fa; border-color: #0969da; color: #0969da; }
+  .pp-btn.danger:hover { background: #ffebe9; border-color: #cf222e; color: #cf222e; }
+  .pp-btn.primary { background: #0969da; color: #fff; border-color: #0860c8; }
+  .pp-btn.primary:hover { background: #0860c8; color: #fff; }
+
+  .progress-bar {
+    padding: 8px 16px 12px;
+    font-size: 11px;
+    color: #57606a;
+    border-bottom: 1px solid #eaecef;
+    margin-bottom: 8px;
+  }
+  .progress-fill {
+    height: 4px; background: #eaecef; border-radius: 2px;
+    overflow: hidden; margin-top: 4px;
+  }
+  .progress-fill > div {
+    height: 100%;
+    background: linear-gradient(90deg, #2da44e, #4ac26b);
+    transition: width 0.3s;
+  }
+  .lesson-group {
+    padding: 8px 16px 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #57606a;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  .lesson-group:hover { color: #0969da; }
+  .lesson-group.active { color: #0969da; }
+  .lesson-item {
+    padding: 5px 16px 5px 28px;
+    font-size: 13px;
+    color: #24292f;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.4;
+  }
+  .lesson-item:hover { background: #f6f8fa; }
+  .lesson-item .lesson-num { color: #8b949e; font-size: 11px; font-family: monospace; min-width: 32px; }
+  .lesson-item .title-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lesson-item .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #d0d7de; flex-shrink: 0;
+  }
+  .lesson-item.passed .status-dot { background: #2da44e; }
+  .lesson-item.attempted .status-dot { background: #fb8500; }
+  .tool-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #57606a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tool-item:hover { background: #f6f8fa; color: #24292f; }
+
+  /* ============ Main content ============ */
+  main {
+    padding: 24px 32px 80px;
+    max-width: 980px;
+    width: 100%;
+  }
+  .group-header { margin-bottom: 20px; }
+  .group-header h1 {
+    font-size: 24px;
+    margin: 0 0 8px;
+    font-weight: 700;
+    color: #24292f;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #0969da;
+    display: inline-block;
+  }
+  .group-header .subtitle {
+    color: #57606a;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .group-header .cheat {
+    background: #fff8f0;
+    border: 1px solid #ffdfb5;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #7d4e00;
+    line-height: 1.7;
+  }
+  .group-header .cheat b { color: #953800; }
+
+  /* ============ 属性闭包计算器 ============ */
+  .closure-calc {
+    background: linear-gradient(135deg, #f6f8fa, #eef4fa);
+    border: 1px solid #a5d6ff;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(9, 105, 218, 0.08);
+  }
+  .closure-calc h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: #0550ae;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .closure-calc .cc-note {
+    color: #57606a;
+    font-size: 12px;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  .closure-calc .cc-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .closure-calc .cc-row label {
+    font-size: 13px;
+    color: #24292f;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .closure-calc .cc-row input {
+    padding: 6px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: "SF Mono", Consolas, monospace;
+    min-width: 100px;
+  }
+  .closure-calc .cc-row input:focus {
+    outline: none;
+    border-color: #0969da;
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+  }
+  .closure-calc .cc-row button {
+    padding: 6px 14px;
+    background: #0969da;
+    color: white;
+    border: 1px solid #0860c8;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .closure-calc .cc-row button:hover { background: #0860c8; }
+  .closure-calc .cc-result {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    min-height: 30px;
+    color: #24292f;
+    line-height: 1.6;
+  }
+  .closure-calc .cc-result.empty { color: #8b949e; font-style: italic; }
+  .closure-calc .cc-result .cc-attr { color: #0550ae; font-weight: 600; }
+  .closure-calc .cc-result .cc-hi { background: #dafbe1; padding: 0 4px; border-radius: 3px; color: #1a7f37; font-weight: 600; }
+  .closure-calc .cc-hint {
+    font-size: 11px;
+    color: #8b949e;
+    margin-top: 6px;
+    font-style: italic;
+  }
+
+  /* ============ Problem card ============ */
+  .qu {
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    scroll-margin-top: 100px;
+  }
+  .qu h2 {
+    margin: 0 0 14px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #24292f;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eaecef;
+  }
+  .qu h2 .qid {
+    font-family: monospace;
+    color: #0969da;
+    font-size: 14px;
+    background: #ddf4ff;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+  }
+  .badge.easy { background: #2da44e; }
+  .badge.medium { background: #fb8500; }
+  .badge.hard { background: #cf222e; }
+
+  .qu .problem {
+    background: #f6f8fa;
+    padding: 12px 16px;
+    border-left: 3px solid #0969da;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    font-family: "STIX Two Math", "Cambria Math", "Times New Roman", serif;
+    font-size: 15px;
+    line-height: 1.9;
+    color: #24292f;
+  }
+  .qu .problem .rel { color: #0550ae; font-weight: 600; font-family: "SF Mono", Consolas, monospace; font-size: 14px; }
+  .qu .problem .fd {
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    color: #24292f;
+  }
+  .qu .problem .fd b { color: #953800; }
+  .qu .problem .fd .arrow { color: #cf222e; font-weight: bold; margin: 0 2px; }
+
+  /* ============ Step 分区 ============ */
+  .step {
+    background: #fafbfc;
+    border: 1px solid #eaecef;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+  }
+  .step .step-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0550ae;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .step .step-title .step-num {
+    background: #0969da;
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .step .step-hint {
+    font-size: 11px;
+    color: #8b949e;
+    margin-left: 6px;
+    font-weight: 400;
+  }
+  .step input[type="text"], .step textarea {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: "SF Mono", Consolas, monospace;
+    line-height: 1.6;
+  }
+  .step input[type="text"]:focus, .step textarea:focus {
+    outline: none;
+    border-color: #0969da;
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+  }
+  .step textarea { resize: vertical; min-height: 44px; }
+  .step .radio-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .step .radio-group label {
+    padding: 6px 14px;
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-weight: 600;
+    color: #24292f;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  .step .radio-group label:hover { background: #f6f8fa; border-color: #0969da; color: #0969da; }
+  .step .radio-group input[type="radio"] { margin: 0; }
+  .step .radio-group input[type="radio"]:checked + span { color: #0969da; }
+  .step .radio-group label:has(input:checked) {
+    background: #ddf4ff;
+    border-color: #0969da;
+    color: #0550ae;
+  }
+  .step .no-decomp {
+    color: #6e7781;
+    font-size: 13px;
+    font-style: italic;
+    padding: 6px 0;
+  }
+  .step .no-decomp b { color: #1a7f37; font-style: normal; }
+
+  .qu .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .qu .actions button {
+    padding: 6px 14px;
+    border: 1px solid #d0d7de;
+    background: #f6f8fa;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #24292f;
+    transition: all 0.15s;
+  }
+  .qu .actions button:hover:not(:disabled) { background: #eaecef; border-color: #afb8c1; }
+  .qu .actions button.primary { background: #2da44e; color: white; border-color: #2c974b; }
+  .qu .actions button.primary:hover:not(:disabled) { background: #2c974b; }
+
+  .feedback {
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.6;
+    display: none;
+    margin-top: 10px;
+  }
+  .feedback.show { display: block; }
+  .feedback.pass { background: #dafbe1; color: #116329; border: 1px solid #4ac26b; }
+  .feedback.fail { background: #ffebe9; color: #82071e; border: 1px solid #ffa198; }
+  .feedback.info { background: #ddf4ff; color: #0550ae; border: 1px solid #54aeff; }
+  .feedback .fb-detail {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(0,0,0,0.1);
+    font-size: 12px;
+    line-height: 1.7;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .feedback .fb-check { color: #1a7f37; }
+  .feedback .fb-x { color: #cf222e; }
+
+  /* ============ 提示 & 参考答案 ============ */
+  details.hint-block {
+    margin-top: 10px;
+    background: #fff8f0;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    border: 1px solid #ffdfb5;
+  }
+  details.hint-block summary { cursor: pointer; color: #953800; font-weight: 600; }
+  details.hint-block > div { padding-top: 8px; line-height: 1.7; }
+
+  details.ans-block {
+    margin-top: 8px;
+    background: #f6f8fa;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  details.ans-block summary { cursor: pointer; color: #0969da; font-weight: 600; }
+  details.ans-block .ans-body { padding: 10px 4px 4px; }
+  details.ans-block .ans-body .ans-row {
+    padding: 6px 0;
+    border-bottom: 1px dashed #d0d7de;
+    line-height: 1.7;
+  }
+  details.ans-block .ans-body .ans-row:last-child { border-bottom: none; }
+  details.ans-block .ans-body .ans-label {
+    font-size: 12px;
+    color: #57606a;
+    margin-right: 6px;
+  }
+  details.ans-block .ans-body .ans-value {
+    font-family: "SF Mono", Consolas, monospace;
+    color: #24292f;
+  }
+  details.ans-block .ans-body .ans-value b { color: #0550ae; }
+
+  /* ============ Modal ============ */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    min-width: 340px;
+    max-width: 400px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  }
+  .modal-card h3 {
+    margin: 0 0 10px;
+    color: #0969da;
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .modal-card .modal-desc {
+    margin: 0 0 14px;
+    color: #57606a;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .modal-card input {
+    padding: 6px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .modal-card input:focus {
+    outline: none;
+    border-color: #0969da;
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+  }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #eaecef;
+  }
+  .modal-actions button {
+    min-width: 78px;
+    padding: 6px 14px;
+    border: 1px solid #d0d7de;
+    background: #f6f8fa;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .modal-actions button:hover { background: #eaecef; }
+  .modal-actions button.blue { background: #0969da; color: white; border-color: #0860c8; }
+  .modal-actions button.blue:hover { background: #0860c8; }
+
+  /* ============ Footer ============ */
+  footer.site-footer {
+    padding: 16px 24px;
+    background: #ffffff;
+    border-top: 1px solid #d0d7de;
+    text-align: center;
+    color: #8b949e;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  footer.site-footer .footer-brand { color: #0969da; font-weight: 600; }
+  footer.site-footer a { color: #57606a; }
+
+  /* ============ 打印 ============ */
+  @media print {
+    header, nav.topnav, aside.sidebar, .progress-panel, .actions, details.hint-block { display: none !important; }
+    .layout { grid-template-columns: 1fr; }
+    main { max-width: 100%; padding: 20px; }
+    .qu { break-inside: avoid; box-shadow: none; }
+  }
+</style>
+</head>
+
+<body>
+<header>
+  <h1>❄️ SQL 练习场 · 范式训练 <span class="page-label">Normal Form · v0.13</span></h1>
+  <div class="status">17 题 · 属性闭包 / 候选码 / 范式判定 / 分解</div>
+</header>
+
+<nav class="topnav">
+  <a href="index.html">📖 查询练习 <span style="opacity:0.6;font-size:12px;margin-left:2px">50题</span></a>
+  <a href="ddl.html">🏗️ DDL 建表 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+  <a href="dml.html">📝 DML 数据操作 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+  <a href="dcl.html">🔐 DCL 权限控制 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+  <a href="algebra.html">🧮 关系代数 <span style="opacity:0.6;font-size:12px;margin-left:2px">24题</span></a>
+  <a href="nf.html" class="active">🔍 范式训练 <span style="opacity:0.7;font-size:12px;margin-left:2px">17题</span></a>
+  <a href="er.html">🔷 ER 建模 <span style="opacity:0.6;font-size:12px;margin-left:2px">12题</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="progress-bar">
+      <span id="progress-text">进度 0 / 17</span>
+      <div class="progress-fill"><div id="progress-bar-inner" style="width:0%"></div></div>
+    </div>
+    <div id="nav-list"></div>
+    <div class="lesson-group" style="margin-top:12px; cursor:default">🛠️ 工具</div>
+    <div class="tool-item" onclick="resetProgress()" title="清除已通过/尝试过的题目记录">🧹 清除进度</div>
+  </aside>
+
+  <main id="main-content"><!-- 动态渲染 --></main>
+
+  <aside class="progress-panel">
+    <h3>📊 我的学习进度</h3>
+    <div class="pp-section">
+      <div class="pp-total">
+        <div class="pp-total-num">
+          <span id="pp-total-passed">0</span><span class="pp-slash"> / </span><span id="pp-total-total">17</span>
+        </div>
+        <div class="pp-total-label">✅ 已通过 / 总题数</div>
+      </div>
+      <div class="pp-bar"><div class="pp-bar-fill" id="pp-bar-fill" style="width:0%"></div></div>
+      <div class="pp-pct" id="pp-pct">0%</div>
+    </div>
+    <div class="pp-section">
+      <div class="pp-section-title">状态明细</div>
+      <div class="pp-stat">
+        <div class="pp-stat-label">✅ 通过</div>
+        <div class="pp-stat-value" id="pp-stat-passed">0</div>
+      </div>
+      <div class="pp-stat">
+        <div class="pp-stat-label">🟠 尝试过</div>
+        <div class="pp-stat-value" id="pp-stat-attempted">0</div>
+      </div>
+      <div class="pp-stat">
+        <div class="pp-stat-label">👀 看过答案</div>
+        <div class="pp-stat-value" id="pp-stat-viewed">0</div>
+      </div>
+    </div>
+    <div class="pp-section">
+      <div class="pp-section-title">分组进度</div>
+      <div id="pp-groups"></div>
+    </div>
+    <div class="pp-section">
+      <div class="pp-section-title">操作</div>
+      <button class="pp-btn primary" onclick="exportReport()">📥 导出学习报告</button>
+      <button class="pp-btn danger" onclick="clearAllProgress()">🗑️ 清空所有进度</button>
+    </div>
+  </aside>
+</div>
+
+<footer class="site-footer">
+  <div><span class="footer-brand">SQL 练习场 · 范式训练</span> · v0.13 · 面向非计算机专业本科生的《数据库原理及应用》配套练习</div>
+  <div style="margin-top:4px;opacity:0.8">上海电力大学 · 教材：赵明渊《数据库原理与应用（SQL Server）》电子工业出版社 2019 · 纯前端算法判分</div>
+</footer>
+
+<!-- 学号输入弹窗 -->
+<div id="student-id-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3>导出学习报告</h3>
+    <p class="modal-desc">请输入你的学号，用于提交作业时识别身份：</p>
+    <input id="student-id-input" type="text" placeholder="例如：20260701001" autocomplete="off" style="width:100%;margin-bottom:8px" />
+    <div class="modal-actions">
+      <button id="student-id-cancel">取消</button>
+      <button id="student-id-confirm" class="blue">提交导出</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================================================================
+// ============ 核心算法 (v0.12) ============
+// FD 结构: { lhs: Set, rhs: Set }
+// ==================================================================
+function toSet(x) {
+  if (x instanceof Set) return new Set(x);
+  if (Array.isArray(x)) return new Set(x);
+  if (typeof x === 'string') return new Set(x.split(''));
+  return new Set();
+}
+function setEq(a, b) { if (a.size !== b.size) return false; for (const x of a) if (!b.has(x)) return false; return true; }
+function setSubset(a, b) { for (const x of a) if (!b.has(x)) return false; return true; }
+function setUnion(a, b) { const c = new Set(a); for (const x of b) c.add(x); return c; }
+function setInter(a, b) { const c = new Set(); for (const x of a) if (b.has(x)) c.add(x); return c; }
+function setDiff(a, b) { const c = new Set(); for (const x of a) if (!b.has(x)) c.add(x); return c; }
+function sortedArr(s) { return [...s].sort(); }
+
+// ---------- 1. 属性闭包 X⁺ ----------
+function attrClosure(X, F) {
+  let closure = toSet(X);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const fd of F) {
+      if (setSubset(fd.lhs, closure)) {
+        for (const a of fd.rhs) {
+          if (!closure.has(a)) { closure.add(a); changed = true; }
+        }
+      }
+    }
+  }
+  return closure;
+}
+
+// ---------- 组合枚举 ----------
+function combinations(arr, k) {
+  const result = [];
+  const rec = (start, path) => {
+    if (path.length === k) { result.push([...path]); return; }
+    for (let i = start; i < arr.length; i++) {
+      path.push(arr[i]); rec(i + 1, path); path.pop();
+    }
+  };
+  rec(0, []);
+  return result;
+}
+
+// ---------- 2. 求所有候选码 ----------
+function findCandidateKeys(R, F) {
+  const attrs = toSet(R);
+  const lhsUnion = new Set(), rhsUnion = new Set();
+  for (const fd of F) {
+    for (const x of fd.lhs) lhsUnion.add(x);
+    for (const x of fd.rhs) rhsUnion.add(x);
+  }
+  const L = new Set(), N = new Set(), LR = new Set();
+  for (const a of attrs) {
+    const inL = lhsUnion.has(a), inR = rhsUnion.has(a);
+    if (inL && !inR) L.add(a);
+    else if (!inL && !inR) N.add(a);
+    else if (inL && inR) LR.add(a);
+  }
+  const must = setUnion(L, N);
+  if (setEq(attrClosure(must, F), attrs)) {
+    return [sortedArr(must)];
+  }
+  const lrArr = [...LR];
+  const superKeys = [];
+  for (let size = 1; size <= lrArr.length; size++) {
+    for (const combo of combinations(lrArr, size)) {
+      const cand = setUnion(must, new Set(combo));
+      if (setEq(attrClosure(cand, F), attrs)) superKeys.push(cand);
+    }
+  }
+  const minimal = [];
+  for (const k of superKeys) {
+    let isMin = true;
+    for (const other of superKeys) {
+      if (other !== k && setSubset(other, k) && !setEq(other, k)) { isMin = false; break; }
+    }
+    if (isMin && !minimal.some(m => setEq(m, k))) minimal.push(k);
+  }
+  if (minimal.length === 0) minimal.push(setUnion(must, LR));
+  return minimal.map(sortedArr);
+}
+
+// ---------- 3. 范式判定 ----------
+function checkNF(R, F, keys) {
+  const attrs = toSet(R);
+  const keySets = keys.map(k => toSet(k));
+  const primeAttrs = new Set();
+  for (const k of keySets) for (const a of k) primeAttrs.add(a);
+  const nonPrime = setDiff(attrs, primeAttrs);
+  const isSuperKey = X => setEq(attrClosure(X, F), attrs);
+
+  let bcnf = true;
+  for (const fd of F) {
+    if (setDiff(fd.rhs, fd.lhs).size === 0) continue;
+    if (!isSuperKey(fd.lhs)) { bcnf = false; break; }
+  }
+  if (bcnf) return 'BCNF';
+
+  let tnf = true;
+  outer3: for (const fd of F) {
+    const rest = setDiff(fd.rhs, fd.lhs);
+    if (rest.size === 0) continue;
+    if (isSuperKey(fd.lhs)) continue;
+    for (const a of rest) if (!primeAttrs.has(a)) { tnf = false; break outer3; }
+  }
+  if (tnf) return '3NF';
+
+  let snf = true;
+  outer2: for (const k of keySets) {
+    if (k.size <= 1) continue;
+    const kArr = [...k];
+    for (let s = 1; s < kArr.length; s++) {
+      for (const combo of combinations(kArr, s)) {
+        const sub = new Set(combo);
+        const cls = attrClosure(sub, F);
+        for (const a of cls) {
+          if (nonPrime.has(a) && !sub.has(a)) { snf = false; break outer2; }
+        }
+      }
+    }
+  }
+  if (snf) return '2NF';
+  return '1NF';
+}
+
+// ---------- 4. 无损分解 (Chase) ----------
+function losslessDecomp(R, F, decomps) {
+  const attrs = sortedArr(toSet(R));
+  const n = decomps.length, m = attrs.length;
+  const table = [];
+  for (let i = 0; i < n; i++) {
+    const row = [], di = toSet(decomps[i]);
+    for (let j = 0; j < m; j++) row.push(di.has(attrs[j]) ? 'a' + j : 'b' + i + '_' + j);
+    table.push(row);
+  }
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const fd of F) {
+      const lIdx = [...fd.lhs].map(a => attrs.indexOf(a)).filter(x => x >= 0);
+      const rIdx = [...fd.rhs].map(a => attrs.indexOf(a)).filter(x => x >= 0);
+      const groups = new Map();
+      for (let i = 0; i < n; i++) {
+        const key = lIdx.map(j => table[i][j]).join('|');
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(i);
+      }
+      for (const rows of groups.values()) {
+        if (rows.length < 2) continue;
+        for (const j of rIdx) {
+          let chosen = null;
+          for (const i of rows) if (table[i][j] === 'a' + j) { chosen = 'a' + j; break; }
+          if (!chosen) chosen = rows.map(i => table[i][j]).slice().sort()[0];
+          for (const i of rows) if (table[i][j] !== chosen) { table[i][j] = chosen; changed = true; }
+        }
+      }
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    let allA = true;
+    for (let j = 0; j < m; j++) if (table[i][j] !== 'a' + j) { allA = false; break; }
+    if (allA) return { lossless: true, table, attrs };
+  }
+  return { lossless: false, table, attrs };
+}
+
+// ---------- 5. 保持依赖 ----------
+function depPreserving(F, decomps) {
+  const decompSets = decomps.map(d => toSet(d));
+  for (const fd of F) {
+    let Z = new Set(fd.lhs);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const Ri of decompSets) {
+        const inter = setInter(Z, Ri);
+        if (inter.size === 0) continue;
+        const cls = attrClosure(inter, F);
+        const proj = setInter(cls, Ri);
+        for (const a of proj) if (!Z.has(a)) { Z.add(a); changed = true; }
+      }
+    }
+    if (!setSubset(fd.rhs, Z)) return { preserved: false, lostFD: fd };
+  }
+  return { preserved: true };
+}
+
+// ==================================================================
+// ============ 算法自测（控制台输出，交付前必须全绿） ============
+// ==================================================================
+(function runSelfTest() {
+  let pass = 0, fail = 0;
+  const FD = (l, r) => ({ lhs: toSet(l), rhs: toSet(r) });
+  const eq = (name, a, b) => {
+    const g = JSON.stringify(a), w = JSON.stringify(b);
+    if (g === w) { pass++; }
+    else { fail++; console.error('FAIL ' + name + ' got=' + g + ' want=' + w); }
+  };
+  const eqSet = (name, a, b) => {
+    const norm = x => x.slice().map(y => (y.slice ? y.slice().sort().join('') : String(y))).sort().join('|');
+    if (norm(a) === norm(b)) { pass++; }
+    else { fail++; console.error('FAIL ' + name + ' got=' + norm(a) + ' want=' + norm(b)); }
+  };
+  const b = (name, a, w) => { if (a === w) pass++; else { fail++; console.error('FAIL ' + name + ' got=' + a); } };
+
+  // attrClosure (3+)
+  eq('AC1', [...attrClosure('A', [FD('A','B'), FD('A','C')])].sort().join(''), 'ABC');
+  eq('AC2', [...attrClosure('A', [FD('A','B'), FD('BC','D')])].sort().join(''), 'AB');
+  eq('AC3', [...attrClosure(['A','B'], [FD('AB','C'), FD('C','D')])].sort().join(''), 'ABCD');
+  eq('AC4-反例', [...attrClosure('A', [FD('A','C'), FD('B','D')])].sort().join(''), 'AC');
+
+  // findCandidateKeys (3+)
+  eqSet('FK1', findCandidateKeys('ABC', [FD('A','B'), FD('A','C')]), [['A']]);
+  eqSet('FK2', findCandidateKeys('ABCD', [FD('AB','C'), FD('C','D')]), [['A','B']]);
+  eqSet('FK3', findCandidateKeys('ABC', [FD('AB','C'), FD('C','A')]), [['A','B'],['B','C']]);
+  eqSet('FK4-反例-无FD', findCandidateKeys('AB', []), [['A','B']]);
+
+  // checkNF (3+)
+  eq('NF1-BCNF', checkNF('ABC', [FD('A','B'), FD('A','C')], [['A']]), 'BCNF');
+  eq('NF2-3NF', checkNF('ABC', [FD('AB','C'), FD('C','B')], [['A','B'],['A','C']]), '3NF');
+  eq('NF3-2NF', checkNF('ABC', [FD('A','B'), FD('B','C')], [['A']]), '2NF');
+  eq('NF4-1NF反例', checkNF('ABCD', [FD('A','B'), FD('A','C')], [['A','D']]), '1NF');
+
+  // losslessDecomp (3+)
+  b('LD1', losslessDecomp('ABC', [FD('A','B'), FD('A','C')], ['AB','AC']).lossless, true);
+  b('LD2-反例', losslessDecomp('ABC', [FD('A','B')], ['AB','BC']).lossless, false);
+  b('LD3', losslessDecomp('ABCDE', [FD('AB','C'), FD('B','D'), FD('D','E')], ['ABC','BD','DE']).lossless, true);
+
+  // depPreserving (3+)
+  b('DP1', depPreserving([FD('A','B'), FD('A','C')], ['AB','AC']).preserved, true);
+  b('DP2-反例', depPreserving([FD('AB','C'), FD('C','B')], ['BC','AC']).preserved, false);
+  b('DP3', depPreserving([FD('SC','G'), FD('C','T'), FD('T','N')], ['SCG','CT','TN']).preserved, true);
+
+  console.log('[范式算法自测] PASS ' + pass + ', FAIL ' + fail + (fail === 0 ? ' ✅' : ' ❌'));
+})();
+
+// ==================================================================
+// ============ 题库数据 ============
+// ==================================================================
+const GROUPS = [
+  { key:'easy',   symbol:'🌱', title:'入门 5 题',   subtitle:'关系较小，单候选码，重点掌握"求候选码 + 判范式"两步。多为 BCNF、2NF 或简单 1NF 违反案例，无需分解。' },
+  { key:'medium', symbol:'📚', title:'中等 8 题',   subtitle:'关系 4~5 属性，可能有多候选码或传递依赖。重点是把 1NF/2NF 关系分解到 3NF，理解无损与依赖保持之间的取舍。' },
+  { key:'hard',   symbol:'🎯', title:'综合 4 题',   subtitle:'关系 5~6 属性，覆盖多候选码、BCNF 分解、以及分解到 BCNF 会丢失依赖的教学负面案例。要求同时验证无损性与保持依赖。' },
+];
+
+// FD 辅助构造
+function _FD(l, r) { return { lhs: toSet(l), rhs: toSet(r) }; }
+function _fdText(fd) { return [...fd.lhs].sort().join('') + '→' + [...fd.rhs].sort().join(''); }
+
+const LESSONS = [
+  // ===== 入门 5 题 =====
+  {
+    id: 'N1_1', group: 'easy', difficulty: 'easy',
+    title: '关系模式的完美形态：所有 FD 左部都是候选码',
+    R: 'ABC',
+    F: [_FD('A','B'), _FD('A','C')],
+    hints: [
+      '第 1 步：观察函数依赖，看哪些属性<b>只在左边出现</b>、哪些只在右边出现。',
+      '第 2 步：算候选码 A 的闭包 A⁺。若 A⁺ 已经覆盖全部属性，则 {A} 就是候选码。',
+      '第 3 步：判范式。检查每条 FD 的左部是否都是超键 —— 若都是则达到 BCNF，无需分解。',
+    ],
+    expectKeys: [['A']],
+    expectNF: 'BCNF',
+    needDecomp: false,
+  },
+  {
+    id: 'N1_2', group: 'easy', difficulty: 'easy',
+    title: '复合候选码：整体键决定其余属性',
+    R: 'ABCD',
+    F: [_FD('AB','C'), _FD('AB','D')],
+    hints: [
+      '所有 FD 左部都是 {A,B}。观察一下：{A,B} 能推出 C 和 D，所以 (AB)⁺ = ABCD。',
+      '{A} 或 {B} 单独能推出全部属性吗？',
+      '复合候选码 {A,B} + 无其他 FD → 所有 FD 左部都是超键 → BCNF。',
+    ],
+    expectKeys: [['A','B']],
+    expectNF: 'BCNF',
+    needDecomp: false,
+  },
+  {
+    id: 'N1_3', group: 'easy', difficulty: 'medium',
+    title: '多候选码但仍满足 3NF：非主属性为空的特殊情形',
+    R: 'ABC',
+    F: [_FD('AB','C'), _FD('C','B')],
+    hints: [
+      '算一下 (AB)⁺ 和 (AC)⁺，观察它们是否都能覆盖 R = {A,B,C}。',
+      '若 {AB} 和 {AC} 都是候选码，则主属性 = {A,B,C}，非主属性 = ∅。',
+      '判 BCNF：C→B 中 C 不是超键 → 违反 BCNF。判 3NF：C 非超键，但 B 是主属性 → 满足 3NF。这是经典的 <b>3NF-not-BCNF</b> 例子。',
+    ],
+    expectKeys: [['A','B'], ['A','C']],
+    expectNF: '3NF',
+    needDecomp: false,
+  },
+  {
+    id: 'N1_4', group: 'easy', difficulty: 'medium',
+    title: '完全依赖但存在传递：满足 2NF 却不满足 3NF',
+    R: 'ABCD',
+    F: [_FD('AB','CD'), _FD('C','D')],
+    hints: [
+      '(AB)⁺ = ABCD，所以候选码 = {AB}。主属性 {A,B}，非主属性 {C,D}。',
+      '2NF：检查候选码真子集 {A}、{B} 的闭包是否含非主属性 —— 都不含，所以满足 2NF。',
+      '3NF：C→D 中 C 不是超键，且 D 不是主属性 → 违反 3NF。所以最高只到 <b>2NF</b>。',
+    ],
+    expectKeys: [['A','B']],
+    expectNF: '2NF',
+    needDecomp: false,
+  },
+  {
+    id: 'N1_5', group: 'easy', difficulty: 'medium',
+    title: '部分依赖：候选码有真子集能决定非主属性',
+    R: 'ABCD',
+    F: [_FD('A','B'), _FD('C','D')],
+    hints: [
+      '候选码要覆盖 R。A 只在左边出现，C 只在左边出现，所以 A 和 C 都必须包含在任何候选码里。',
+      '(AC)⁺ = ABCD，所以候选码 = {AC}。主属性 {A,C}，非主属性 {B,D}。',
+      '2NF：候选码真子集 {A} 的闭包 = {A,B}，含非主属性 B → 部分依赖，违反 2NF。所以最高只到 <b>1NF</b>。',
+    ],
+    expectKeys: [['A','C']],
+    expectNF: '1NF',
+    needDecomp: false,
+  },
+
+  // ===== 中等 8 题 =====
+  {
+    id: 'N2_1', group: 'medium', difficulty: 'medium',
+    title: '学生-课程-教师：经典 3NF 分解案例',
+    R: 'ABCDE',
+    F: [_FD('AB','D'), _FD('B','C'), _FD('C','E')],
+    scenarioNote: '教材经典场景：设 A=学号 SNO, B=课程号 CNO, C=教师号 TNO, D=成绩 GRADE, E=教师姓名 TNAME。约束：(学号,课程号)→成绩、课程号→教师号（每门课一位教师）、教师号→教师姓名。',
+    hints: [
+      '先算候选码：A、B 只在左边出现 → 必须包含。(AB)⁺ 是否覆盖全部？',
+      '注意到 {B} 单独能推出 C 和 E（B→C, C→E），说明 B 是候选码 {AB} 的真子集，且 B⁺ 已经含非主属性 → 违反 2NF。',
+      '分解到 3NF：把每条 FD 独立成表 —— (A,B,D) + (B,C) + (C,E)。',
+    ],
+    expectKeys: [['A','B']],
+    expectNF: '1NF',
+    needDecomp: true,
+    target: '3NF',
+    decomp: [['A','B','D'], ['B','C'], ['C','E']],
+  },
+  {
+    id: 'N2_2', group: 'medium', difficulty: 'medium',
+    title: '单属性候选码 + 双重传递依赖',
+    R: 'ABCD',
+    F: [_FD('A','B'), _FD('B','C'), _FD('D','A')],
+    hints: [
+      '哪个属性只在左边？D 是"最上游"（只在左）。从 D 开始：D→A→B→C，所以 D⁺ = ABCD。',
+      '候选码是 {D}。单属性候选码 → 自动满足 2NF；但 A→B（A 非超键、B 非主属性）→ 违反 3NF。',
+      '分解到 3NF：三条依赖各成一表 —— (A,B) + (B,C) + (D,A)。',
+    ],
+    expectKeys: [['D']],
+    expectNF: '2NF',
+    needDecomp: true,
+    target: '3NF',
+    decomp: [['A','B'], ['B','C'], ['D','A']],
+  },
+  {
+    id: 'N2_3', group: 'medium', difficulty: 'hard',
+    title: '多候选码 + 部分依赖：常规 1NF 分解',
+    R: 'ABCD',
+    F: [_FD('A','C'), _FD('B','D'), _FD('C','A')],
+    hints: [
+      '哪些属性只在左边？B 只在左，其他属性 A、C、D 情况各异。B 必须在候选码里。',
+      '(AB)⁺ = ABCD，(BC)⁺ = ABCD → 两个候选码 {AB},{BC}。主属性 {A,B,C}，非主属性 {D}。',
+      '{AB} 真子集 {B}⁺ = {B,D} 含非主属性 D → 违反 2NF。分解到 3NF：(A,C) + (B,D) + (A,B)（第三个保留候选码）。',
+    ],
+    expectKeys: [['A','B'], ['B','C']],
+    expectNF: '1NF',
+    needDecomp: true,
+    target: '3NF',
+    decomp: [['A','C'], ['B','D'], ['A','B']],
+  },
+  {
+    id: 'N2_4', group: 'medium', difficulty: 'medium',
+    title: '完全依赖但内部有非主属性传递',
+    R: 'ABCDE',
+    F: [_FD('AB','C'), _FD('AB','D'), _FD('AB','E'), _FD('E','D')],
+    hints: [
+      '(AB)⁺ = ABCDE，候选码 {AB}。主属性 {A,B}，非主 {C,D,E}。',
+      '真子集 {A}⁺、{B}⁺ 都只含自身，不含非主属性 → 满足 2NF。',
+      'E→D 中 E 非超键、D 非主属性 → 违反 3NF。分解到 3NF：(A,B,C,E) + (E,D)。',
+    ],
+    expectKeys: [['A','B']],
+    expectNF: '2NF',
+    needDecomp: true,
+    target: '3NF',
+    decomp: [['A','B','C','E'], ['E','D']],
+  },
+  {
+    id: 'N2_5', group: 'medium', difficulty: 'hard',
+    title: '多重传递依赖：需要 4 段分解',
+    R: 'ABCDE',
+    F: [_FD('A','B'), _FD('A','C'), _FD('B','C'), _FD('C','D'), _FD('D','E')],
+    hints: [
+      'A 只在左边 → A 必然在候选码里。A⁺ 顺链：A→B→C→D→E，所以 A⁺ = ABCDE。候选码 {A}。',
+      '单属性候选码 → 自动 2NF；但 B→C、C→D、D→E 都是非主属性间的依赖 → 违反 3NF。',
+      '注意 A→C 冗余（可从 A→B, B→C 推出），最小依赖集合 = {A→B, B→C, C→D, D→E}。分解到 3NF：(A,B) + (B,C) + (C,D) + (D,E)。',
+    ],
+    expectKeys: [['A']],
+    expectNF: '2NF',
+    needDecomp: true,
+    target: '3NF',
+    decomp: [['A','B'], ['B','C'], ['C','D'], ['D','E']],
+  },
+  {
+    id: 'N2_6', group: 'medium', difficulty: 'medium',
+    title: '员工-部门-经理：3NF 合成法示范',
+    R: 'ABCD',
+    F: [_FD('A','B'), _FD('A','D'), _FD('B','C')],
+    scenarioNote: '教学场景：A=员工工号, B=部门, C=部门经理, D=薪资。约束：员工→部门、员工→薪资、部门→部门经理。',
+    hints: [
+      'A 只在左边，(A)⁺ = A→B→C, 加 D → ABCD。候选码 {A}。',
+      '单属性候选码 → 2NF ✓；但 B→C（B 非超键、C 非主属性）→ 违反 3NF。',
+      '合成法分组：{A→B, A→D} → (A,B,D)；{B→C} → (B,C)。分解 = (A,B,D) + (B,C)。',
+    ],
+    expectKeys: [['A']],
+    expectNF: '2NF',
+    needDecomp: true,
+    target: '3NF',
+    decomp: [['A','B','D'], ['B','C']],
+  },
+  {
+    id: 'N2_7', group: 'medium', difficulty: 'hard',
+    title: '最小覆盖化简：识别冗余依赖',
+    R: 'ABCDE',
+    F: [_FD('A','B'), _FD('A','D'), _FD('A','E'), _FD('D','E'), _FD('DE','C')],
+    hints: [
+      'A 只在左，(A)⁺ = A→BDE，再 DE→C，所以 A⁺ = ABCDE。候选码 {A}。',
+      '注意 A→E 冗余（A→D + D→E 已能推出）；求最小覆盖后剩：{A→B, A→D, D→E, DE→C}。',
+      '分解到 3NF：分组后 (A,B,D) + (D,E) + (C,D,E)。（DE→C 需要一个包含 D、E、C 三个属性的表）',
+    ],
+    expectKeys: [['A']],
+    expectNF: '2NF',
+    needDecomp: true,
+    target: '3NF',
+    decomp: [['A','B','D'], ['D','E'], ['C','D','E']],
+  },
+  {
+    id: 'N2_8', group: 'medium', difficulty: 'medium',
+    title: '复合键 + 两级传递：教学典型的 2NF→3NF',
+    R: 'ABCDE',
+    F: [_FD('AB','C'), _FD('C','D'), _FD('D','E')],
+    hints: [
+      '(AB)⁺ = AB→C→D→E = ABCDE。候选码 {AB}。',
+      '真子集 {A}⁺={A}、{B}⁺={B} 都不含非主 → 满足 2NF；但 C→D、D→E 是传递依赖 → 违反 3NF。',
+      '分解到 3NF：(A,B,C) + (C,D) + (D,E)。',
+    ],
+    expectKeys: [['A','B']],
+    expectNF: '2NF',
+    needDecomp: true,
+    target: '3NF',
+    decomp: [['A','B','C'], ['C','D'], ['D','E']],
+  },
+
+  // ===== 综合 4 题：分解到 BCNF + 无损/保持依赖双验证 =====
+  {
+    id: 'N3_1', group: 'hard', difficulty: 'hard',
+    title: '学生-课程-教师-教室：BCNF 分解 + 双重验证',
+    R: 'ABCDE',
+    F: [_FD('AB','C'), _FD('B','D'), _FD('D','E')],
+    scenarioNote: '教学场景：A=学号, B=课程号, C=成绩, D=教师号, E=教室号。约束：(学号,课程号)→成绩、课程号→教师号、教师号→教室号。',
+    hints: [
+      '(AB)⁺ = ABCDE，候选码 {AB}。B→D 中 B⁺={B,D,E} 已含非主属性 → 违反 2NF，最高 1NF。',
+      '所有违反 BCNF 的 FD：AB→C（AB 是超键，通过）、B→D（B 不是超键）、D→E（D 不是超键）。',
+      '一次性 BCNF 分解：(A,B,C) + (B,D) + (D,E)。三个模式都满足 BCNF；无损 ✓；保持依赖 ✓（每条原 FD 都在某个 R<sub>i</sub> 内）。',
+    ],
+    expectKeys: [['A','B']],
+    expectNF: '1NF',
+    needDecomp: true,
+    target: 'BCNF',
+    decomp: [['A','B','C'], ['B','D'], ['D','E']],
+    expectLossless: true,
+    expectPreserving: true,
+  },
+  {
+    id: 'N3_2', group: 'hard', difficulty: 'hard',
+    title: '教学负面案例：BCNF 分解丢失依赖',
+    R: 'ABC',
+    F: [_FD('AB','C'), _FD('C','B')],
+    scenarioNote: '这是《数据库系统概论》王珊教材里的著名例子：证明"BCNF 分解不一定保持依赖"，因此教材通常推荐分解到 3NF。',
+    hints: [
+      '候选码 {AB},{AC}，非主属性 = ∅。所有属性都是主属性 → 满足 3NF。',
+      '但 C→B 中 C 不是超键 → 违反 BCNF。要进一步分解到 BCNF，先把 C→B 单独提出。',
+      '分解为 (B,C) + (A,C)：都是 BCNF；无损 ✓（两模式交集 = {C}，C→B 使 (B,C) 恢复）；<b>但 AB→C 无法从任何 R<sub>i</sub> 上的投影推出 → 丢失依赖 ❌</b>。',
+    ],
+    expectKeys: [['A','B'], ['A','C']],
+    expectNF: '3NF',
+    needDecomp: true,
+    target: 'BCNF',
+    decomp: [['B','C'], ['A','C']],
+    expectLossless: true,
+    expectPreserving: false,
+  },
+  {
+    id: 'N3_3', group: 'hard', difficulty: 'hard',
+    title: '多重非主属性依赖 + 唯一候选码',
+    R: 'ABCDE',
+    F: [_FD('A','B'), _FD('A','C'), _FD('C','D'), _FD('E','A')],
+    hints: [
+      'E 只在左边（E 是"最上游"）。E⁺ = E→A→BC→D = ABCDE。候选码 {E}。',
+      '{E} 是单属性候选码 → 自动 2NF；但 A→B, A→C, C→D 都是非主属性依赖 → 违反 3NF/BCNF。',
+      '分解：(A,B,C) 涵盖 A→BC；(C,D) 涵盖 C→D；(A,E) 涵盖 E→A。都是 BCNF；无损 ✓；保持依赖 ✓。',
+    ],
+    expectKeys: [['E']],
+    expectNF: '2NF',
+    needDecomp: true,
+    target: 'BCNF',
+    decomp: [['A','B','C'], ['C','D'], ['A','E']],
+    expectLossless: true,
+    expectPreserving: true,
+  },
+  {
+    id: 'N3_4', group: 'hard', difficulty: 'hard',
+    title: '6 属性复杂关系：多段链式分解',
+    R: 'ABCDEF',
+    F: [_FD('A','B'), _FD('A','C'), _FD('B','D'), _FD('D','E'), _FD('C','F')],
+    hints: [
+      'A 只在左，A⁺ 顺链一直推：A→BC→D→E，A→C→F，最终 A⁺ = ABCDEF。候选码 {A}。',
+      '单属性候选码 → 2NF ✓；但 B→D、D→E、C→F 都是非主属性依赖 → 违反 3NF/BCNF。',
+      '把每条 FD 都独立成表：(A,B,C) + (B,D) + (D,E) + (C,F)。都是 BCNF；无损 ✓；保持依赖 ✓。',
+    ],
+    expectKeys: [['A']],
+    expectNF: '2NF',
+    needDecomp: true,
+    target: 'BCNF',
+    decomp: [['A','B','C'], ['B','D'], ['D','E'], ['C','F']],
+    expectLossless: true,
+    expectPreserving: true,
+  },
+];
+
+// ==================================================================
+// ============ 全局状态 ============
+// ==================================================================
+let currentGroup = GROUPS[0].key;
+let progress = JSON.parse(localStorage.getItem('sql-lab-nf-progress-v1') || '{}');
+let viewedAnswers = new Set(JSON.parse(localStorage.getItem('sql-lab-nf-viewed-v1') || '[]'));
+
+function saveProgress() { localStorage.setItem('sql-lab-nf-progress-v1', JSON.stringify(progress)); }
+function saveViewedAnswers() { localStorage.setItem('sql-lab-nf-viewed-v1', JSON.stringify([...viewedAnswers])); }
+
+// ==================================================================
+// ============ 用户输入解析器 ============
+// ==================================================================
+// 解析候选码输入：接受 "(A,B), (A,C)" / "AB, AC" / "A B ; A C" 等宽松格式
+// 返回排序后的 [[...], [...]]
+function parseKeysInput(text) {
+  if (!text || !text.trim()) return null;
+  // 优先尝试按小括号分组
+  const groups = [];
+  // 匹配 (...) 里的内容
+  const parenMatches = [...text.matchAll(/\(([^)]*)\)/g)];
+  if (parenMatches.length > 0) {
+    for (const m of parenMatches) {
+      const attrs = m[1].toUpperCase().replace(/[^A-Z]/g, '').split('').sort();
+      const uniq = [...new Set(attrs)];
+      if (uniq.length > 0) groups.push(uniq);
+    }
+  } else {
+    // 按分号/顿号/逗号分组，每组去除非字母
+    const parts = text.split(/[;；,，、\n]/).map(p => p.trim()).filter(Boolean);
+    for (const p of parts) {
+      const attrs = p.toUpperCase().replace(/[^A-Z]/g, '').split('').sort();
+      const uniq = [...new Set(attrs)];
+      if (uniq.length > 0) groups.push(uniq);
+    }
+    if (groups.length === 0) {
+      // 全串按字母拆分成单一候选码
+      const attrs = text.toUpperCase().replace(/[^A-Z]/g, '').split('').sort();
+      const uniq = [...new Set(attrs)];
+      if (uniq.length > 0) groups.push(uniq);
+    }
+  }
+  // 组间去重（按内容排序后 join）
+  const seen = new Set();
+  const dedup = [];
+  for (const g of groups) {
+    const k = g.join('');
+    if (!seen.has(k)) { seen.add(k); dedup.push(g); }
+  }
+  return dedup;
+}
+
+// 解析分解输入："R1(A,B); R2(A,C,D)" / "AB; AC" / 换行都行
+function parseDecompInput(text) {
+  if (!text || !text.trim()) return null;
+  return parseKeysInput(text); // 复用同一解析逻辑
+}
+
+// 检查两组集合列表是否相等（忽略顺序）
+function sameGroups(a, b) {
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  const norm = arr => arr.map(g => g.slice().sort().join('')).sort();
+  const na = norm(a), nb = norm(b);
+  for (let i = 0; i < na.length; i++) if (na[i] !== nb[i]) return false;
+  return true;
+}
+
+// ==================================================================
+// ============ 属性闭包计算器 ============
+// ==================================================================
+function computeClosureLive(qid) {
+  const inp = document.getElementById('cc-input-' + qid);
+  const box = document.getElementById('cc-result-' + qid);
+  if (!inp || !box) return;
+  const L = LESSONS.find(x => x.id === qid);
+  const raw = inp.value.toUpperCase().replace(/[^A-Z]/g, '');
+  if (!raw) {
+    box.classList.add('empty');
+    box.innerHTML = '在上方输入属性集（如 <b>AB</b> 或 <b>A,B</b>），下方立即显示 X⁺';
+    return;
+  }
+  // 校验属性都在 R 里
+  const attrsSet = toSet(L.R);
+  const inputSet = toSet(raw);
+  const invalid = [...inputSet].filter(a => !attrsSet.has(a));
+  if (invalid.length > 0) {
+    box.classList.remove('empty');
+    box.innerHTML = `<span style="color:#cf222e">⚠ 属性 ${invalid.join(',')} 不在 R = {${[...attrsSet].sort().join(',')}} 中</span>`;
+    return;
+  }
+  const closure = attrClosure(inputSet, L.F);
+  const closureArr = [...closure].sort();
+  const isSuper = setEq(closure, attrsSet);
+  const isFull = closureArr.length === attrsSet.size;
+  box.classList.remove('empty');
+  box.innerHTML =
+    `<span class="cc-attr">{${[...inputSet].sort().join(',')}}⁺</span> = ` +
+    `{${closureArr.map(a => (attrsSet.has(a) && !inputSet.has(a) ? '<span class="cc-hi">' + a + '</span>' : a)).join(', ')}}` +
+    (isFull ? '<br><span style="color:#1a7f37;font-size:11px">💡 覆盖全部属性 → {' + [...inputSet].sort().join(',') + '} 是<b>超键</b></span>' : '');
+}
+
+// ==================================================================
+// ============ 侧边栏 ============
+// ==================================================================
+function renderNav() {
+  const container = document.getElementById('nav-list');
+  let html = '';
+  GROUPS.forEach(g => {
+    const total = LESSONS.filter(L => L.group === g.key).length;
+    const passed = LESSONS.filter(L => L.group === g.key && progress[L.id] === 'passed').length;
+    html += `<div class="lesson-group ${g.key === currentGroup ? 'active' : ''}" onclick="selectGroup('${g.key}')">
+      <span>${g.symbol}</span>
+      <span>${g.title}</span>
+      <span style="margin-left:auto;font-size:11px;color:#8b949e;font-weight:400;">${passed}/${total}</span>
+    </div>`;
+    if (g.key === currentGroup) {
+      LESSONS.filter(L => L.group === g.key).forEach(L => {
+        const state = progress[L.id] || 'none';
+        html += `<div class="lesson-item ${state}" onclick="scrollToQu('${L.id}')">
+          <span class="lesson-num">${L.id}</span>
+          <span class="title-text">${escapeHtml(L.title)}</span>
+          <span class="status-dot"></span>
+        </div>`;
+      });
+    }
+  });
+  container.innerHTML = html;
+}
+function selectGroup(key) { currentGroup = key; renderNav(); renderMain(key); window.scrollTo({top:0,behavior:'smooth'}); }
+function scrollToQu(id) { const el = document.getElementById('qu-' + id); if (el) el.scrollIntoView({behavior:'smooth', block:'start'}); }
+
+// ==================================================================
+// ============ 主区渲染 ============
+// ==================================================================
+function renderMain(groupKey) {
+  const g = GROUPS.find(x => x.key === groupKey);
+  const lessons = LESSONS.filter(L => L.group === groupKey);
+  const main = document.getElementById('main-content');
+
+  const cheatMap = {
+    'easy': '<b>本组重点</b>：熟练"属性闭包 X⁺"计算 → 用它求候选码 → 判范式（BCNF / 3NF / 2NF / 1NF）。<br>使用上方"属性闭包计算器"随时验证你的推导。<b>不用做分解</b>，只需完成前两步。',
+    'medium': '<b>本组重点</b>：熟练把 1NF/2NF 的关系"合成法"或"分解法"降到 3NF。<br>分解格式示例：<code>(A,B,C); (B,D)</code>；也可写 <code>R1(A,B,C); R2(B,D)</code>，程序会自动提取属性。',
+    'hard': '<b>本组重点</b>：分解到 BCNF，并同时验证"无损分解"和"保持依赖"。<br>提交时程序会自动跑 <b>Chase 算法</b> 与 <b>依赖投影闭包</b> 双验证。<b>N3_2 是教学负面案例</b>：BCNF 分解会丢失依赖，这也是教材推荐 3NF 而非硬推 BCNF 的原因。',
+  };
+
+  let html = `
+    <div class="group-header">
+      <h1>${g.symbol} ${g.title}</h1>
+      <div class="subtitle">${g.subtitle}</div>
+      <div class="cheat">${cheatMap[g.key] || ''}</div>
+    </div>
+  `;
+
+  lessons.forEach(L => { html += renderQu(L); });
+  main.innerHTML = html;
+
+  // 初始化每题闭包计算器
+  lessons.forEach(L => {
+    const inp = document.getElementById('cc-input-' + L.id);
+    if (inp) inp.addEventListener('input', () => computeClosureLive(L.id));
+    computeClosureLive(L.id);
+  });
+}
+
+function renderQu(L) {
+  const state = progress[L.id] || 'none';
+  const stateIcon = state === 'passed' ? '✅' : (state === 'attempted' ? '🟠' : '');
+  const dLabel = { easy:'入门', medium:'常规', hard:'进阶' }[L.difficulty] || L.difficulty;
+  const fdText = L.F.map(f => `${[...f.lhs].sort().join('')} <span class="arrow">→</span> ${[...f.rhs].sort().join('')}`).join(' &nbsp;;&nbsp; ');
+  const rAttrs = L.R.split('').sort().join(', ');
+
+  // Step 3 部分
+  let step3Html = '';
+  if (L.needDecomp) {
+    step3Html = `
+      <div class="step">
+        <div class="step-title">
+          <span class="step-num">3</span>
+          <span>分解到 ${L.target}</span>
+          <span class="step-hint">格式：<code>(A,B,C); (B,D)</code> 或 <code>R1(A,B,C); R2(B,D)</code></span>
+        </div>
+        <textarea id="dec-${L.id}" placeholder="例如：(A,B,C); (B,D); (D,E)" rows="2"></textarea>
+      </div>
+    `;
+  } else {
+    step3Html = `
+      <div class="step">
+        <div class="step-title">
+          <span class="step-num">3</span>
+          <span>分解</span>
+        </div>
+        <div class="no-decomp">本题最高范式已达标 → <b>无需分解</b>（Step 3 自动跳过）</div>
+      </div>
+    `;
+  }
+
+  const scenario = L.scenarioNote ? `<div style="margin-top:8px;padding:8px 12px;background:#fffbea;border-left:3px solid #d4a72c;border-radius:4px;font-size:12px;color:#7d4e00;line-height:1.6">📖 ${L.scenarioNote}</div>` : '';
+
+  return `
+    <div class="qu" id="qu-${L.id}">
+      <h2>
+        <span class="qid">${L.id}</span>
+        <span>${escapeHtml(L.title)}</span>
+        <span class="badge ${L.difficulty}">${dLabel}</span>
+        <span style="margin-left:auto;font-size:14px" id="state-icon-${L.id}">${stateIcon}</span>
+      </h2>
+      <div class="problem">
+        <div><span class="rel">R</span>(${rAttrs})</div>
+        <div class="fd"><b>F</b> = { ${fdText} }</div>
+        ${scenario}
+      </div>
+
+      <!-- 每题嵌入的属性闭包计算器 -->
+      <div class="closure-calc">
+        <h3>🧮 属性闭包计算器<span style="font-size:11px;color:#57606a;font-weight:400;margin-left:8px">辅助工具 · 不消耗尝试次数</span></h3>
+        <div class="cc-note">在本题的 F 上计算任意属性集 X 的闭包 X⁺，用于验证候选码或推导。</div>
+        <div class="cc-row">
+          <label>X = </label>
+          <input id="cc-input-${L.id}" type="text" placeholder="如 AB / A,B" autocomplete="off" />
+          <button onclick="computeClosureLive('${L.id}')">计算 X⁺</button>
+        </div>
+        <div class="cc-result empty" id="cc-result-${L.id}">在上方输入属性集，即时显示 X⁺</div>
+      </div>
+
+      <!-- Step 1: 候选码 -->
+      <div class="step">
+        <div class="step-title">
+          <span class="step-num">1</span>
+          <span>求所有候选码</span>
+          <span class="step-hint">格式：<code>(A,B), (A,C)</code>；只有一个候选码则写 <code>(A,B)</code></span>
+        </div>
+        <input id="keys-${L.id}" type="text" placeholder="例如：(A,B), (A,C)" autocomplete="off" />
+      </div>
+
+      <!-- Step 2: 范式判定 -->
+      <div class="step">
+        <div class="step-title">
+          <span class="step-num">2</span>
+          <span>选择最高范式</span>
+        </div>
+        <div class="radio-group">
+          <label><input type="radio" name="nf-${L.id}" value="1NF"><span>1NF</span></label>
+          <label><input type="radio" name="nf-${L.id}" value="2NF"><span>2NF</span></label>
+          <label><input type="radio" name="nf-${L.id}" value="3NF"><span>3NF</span></label>
+          <label><input type="radio" name="nf-${L.id}" value="BCNF"><span>BCNF</span></label>
+        </div>
+      </div>
+
+      ${step3Html}
+
+      <div class="actions">
+        <button class="primary" onclick="checkAnswer('${L.id}')">✓ 提交对答案</button>
+        <button onclick="clearAnswer('${L.id}')">清空</button>
+      </div>
+
+      <div class="feedback" id="fb-${L.id}"></div>
+
+      ${renderHints(L)}
+      ${renderAnsBlock(L)}
+    </div>
+  `;
+}
+
+function renderHints(L) {
+  const hintsArr = L.hints || [];
+  if (hintsArr.length === 0) return '';
+  if (hintsArr.length === 1) {
+    return `<details class="hint-block" onclick="markHintViewed('${L.id}')"><summary>💡 提示</summary><div>${hintsArr[0]}</div></details>`;
+  }
+  const items = hintsArr.map((h, i) =>
+    `<div class="hint-item" id="hint-item-${L.id}-${i}"${i > 0 ? ' style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #ffdfb5"' : ''}><b>提示 ${i + 1}：</b>${h}</div>`
+  ).join('');
+  return `<details class="hint-block" ontoggle="if(this.open)markHintViewed('${L.id}')">
+    <summary>💡 分层提示 · <span id="hint-shown-${L.id}">1</span>/${hintsArr.length}</summary>
+    <div>
+      ${items}
+      <button id="hint-more-${L.id}" onclick="showNextHint('${L.id}', ${hintsArr.length})" style="margin-top:10px; font-size:12px; padding:4px 10px; background:#fff; border:1px solid #ffdfb5; color:#953800; border-radius:4px; cursor:pointer;">👇 继续查看下一条提示</button>
+    </div>
+  </details>`;
+}
+
+function renderAnsBlock(L) {
+  const keysStr = L.expectKeys.map(k => '(' + k.join(',') + ')').join(', ');
+  const decompStr = L.needDecomp
+    ? L.decomp.map((d, i) => 'R' + (i + 1) + '(' + d.join(',') + ')').join('; ')
+    : '<i>无需分解</i>';
+  const dualLine = L.expectLossless !== undefined
+    ? `<div class="ans-row"><span class="ans-label">🔎 无损分解：</span><span class="ans-value">${L.expectLossless ? '✅ 无损' : '❌ 有损'}</span></div>
+       <div class="ans-row"><span class="ans-label">🔗 保持依赖：</span><span class="ans-value">${L.expectPreserving ? '✅ 保持' : '❌ 丢失依赖（教学负面案例）'}</span></div>`
+    : '';
+  return `
+    <details class="ans-block">
+      <summary>👀 查看参考答案（会计入"看过答案"统计）</summary>
+      <div class="ans-body" id="ans-body-${L.id}">
+        <div id="ans-warn-${L.id}" style="padding:4px 0;">
+          <div style="color:#57606a; font-size:12px; margin-bottom:6px;">⚠️ 看答案后就不算独立完成了，建议先按分层提示多试几次</div>
+          <button onclick="revealAnswer('${L.id}')" style="font-size:12px; padding:4px 12px; background:#0969da; color:white; border:none; border-radius:4px; cursor:pointer;">我已知晓，展示答案</button>
+        </div>
+        <div id="ans-detail-${L.id}" style="display:none">
+          <div class="ans-row"><span class="ans-label">🔑 候选码：</span><span class="ans-value"><b>${keysStr}</b></span></div>
+          <div class="ans-row"><span class="ans-label">📊 最高范式：</span><span class="ans-value"><b>${L.expectNF}</b></span></div>
+          <div class="ans-row"><span class="ans-label">🧩 分解方案：</span><span class="ans-value">${decompStr}</span></div>
+          ${dualLine}
+        </div>
+      </div>
+    </details>
+  `;
+}
+
+// ==================================================================
+// ============ 判分 ============
+// ==================================================================
+function checkAnswer(qid) {
+  const L = LESSONS.find(x => x.id === qid);
+  // Step 1: 候选码
+  const keysInputEl = document.getElementById('keys-' + qid);
+  const keysInput = keysInputEl ? keysInputEl.value : '';
+  const userKeys = parseKeysInput(keysInput);
+  // Step 2: 范式
+  const nfRadios = document.querySelectorAll(`input[name="nf-${qid}"]`);
+  let userNF = null;
+  nfRadios.forEach(r => { if (r.checked) userNF = r.value; });
+  // Step 3: 分解
+  let userDecomp = null;
+  if (L.needDecomp) {
+    const dEl = document.getElementById('dec-' + qid);
+    userDecomp = parseDecompInput(dEl ? dEl.value : '');
+  }
+
+  // 校验各步
+  const checks = [];
+  // 候选码
+  const keysOK = userKeys && sameGroups(userKeys, L.expectKeys);
+  checks.push({ label: 'Step 1 · 候选码', ok: keysOK,
+    detail: userKeys ? '你的答案：' + userKeys.map(k => '(' + k.join(',') + ')').join(', ') : '未填写' });
+  // 范式
+  const nfOK = userNF === L.expectNF;
+  checks.push({ label: 'Step 2 · 最高范式', ok: nfOK,
+    detail: userNF ? '你的答案：' + userNF : '未选择' });
+  // 分解
+  let decompOK = true;
+  let decompDetail = '';
+  if (L.needDecomp) {
+    if (!userDecomp || userDecomp.length === 0) {
+      decompOK = false; decompDetail = '未填写';
+    } else {
+      // 严格：属性集合匹配
+      const strict = sameGroups(userDecomp, L.decomp);
+      if (strict) {
+        decompOK = true;
+        decompDetail = '你的答案：' + userDecomp.map(d => '(' + d.join(',') + ')').join('; ');
+      } else {
+        // 宽松：验证覆盖 + 无损 + 目标范式
+        const allAttrs = new Set(); for (const d of userDecomp) for (const a of d) allAttrs.add(a);
+        const coverOK = setEq(allAttrs, toSet(L.R));
+        const ldRes = losslessDecomp(L.R, L.F, userDecomp);
+        // 检查每个 Ri 是否满足目标范式（用 Fi 投影）
+        let ok = coverOK && ldRes.lossless;
+        let msg = '';
+        if (!coverOK) msg = '未覆盖 R 的所有属性';
+        else if (!ldRes.lossless) msg = '分解不是无损的';
+        else {
+          // 目标范式验证
+          const order = { '1NF':1, '2NF':2, '3NF':3, 'BCNF':4 };
+          for (const ri of userDecomp) {
+            const Fi = [];
+            for (const fd of L.F) {
+              const inRi = a => ri.includes(a);
+              // 完整投影：Fi 上的 FD 应包含所有从 Fi 内闭包能得出的 FD
+              // 简化处理：只保留原 F 中 lhs, rhs 都被 ri 完整包含的 FD（够用于常见教材题）
+              if ([...fd.lhs].every(inRi)) {
+                const rhs = [...fd.rhs].filter(inRi);
+                if (rhs.length > 0) Fi.push({ lhs: new Set(fd.lhs), rhs: new Set(rhs) });
+              }
+            }
+            const ki = findCandidateKeys(ri, Fi);
+            const ni = checkNF(ri, Fi, ki);
+            if (order[ni] < order[L.target]) {
+              ok = false;
+              msg = `R(${ri.join(',')}) 只到 ${ni}，未达目标 ${L.target}`;
+              break;
+            }
+          }
+        }
+        decompOK = ok;
+        decompDetail = ok
+          ? '你的答案：' + userDecomp.map(d => '(' + d.join(',') + ')').join('; ') + '（宽松验收：覆盖 + 无损 + 目标范式 ✓）'
+          : '你的答案：' + userDecomp.map(d => '(' + d.join(',') + ')').join('; ') + '。' + msg;
+      }
+    }
+    checks.push({ label: 'Step 3 · 分解到 ' + L.target, ok: decompOK, detail: decompDetail });
+  }
+
+  const allOK = checks.every(c => c.ok);
+  const fb = document.getElementById('fb-' + qid);
+  const detailHTML = checks.map(c =>
+    `<div>${c.ok ? '<span class="fb-check">✓</span>' : '<span class="fb-x">✗</span>'} ${c.label} — ${escapeHtml(c.detail)}</div>`
+  ).join('');
+  if (allOK) {
+    fb.className = 'feedback show pass';
+    fb.innerHTML = `<b>✅ 通过！</b> 三步答案全对。<div class="fb-detail">${detailHTML}</div>`;
+    progress[qid] = 'passed';
+    saveProgress(); renderNav(); refreshProgressPanel();
+    const icon = document.getElementById('state-icon-' + qid);
+    if (icon) icon.textContent = '✅';
+  } else {
+    fb.className = 'feedback show fail';
+    fb.innerHTML = `<b>❌ 未通过。</b> 请修正下方错误项：<div class="fb-detail">${detailHTML}</div>`;
+    if (progress[qid] !== 'passed') {
+      progress[qid] = 'attempted';
+      saveProgress(); renderNav(); refreshProgressPanel();
+      const icon = document.getElementById('state-icon-' + qid);
+      if (icon && icon.textContent !== '✅') icon.textContent = '🟠';
+    }
+  }
+}
+
+function clearAnswer(qid) {
+  const k = document.getElementById('keys-' + qid); if (k) k.value = '';
+  document.querySelectorAll(`input[name="nf-${qid}"]`).forEach(r => r.checked = false);
+  const d = document.getElementById('dec-' + qid); if (d) d.value = '';
+  const fb = document.getElementById('fb-' + qid); if (fb) fb.className = 'feedback';
+}
+
+// ==================================================================
+// ============ 提示 / 答案 ============
+// ==================================================================
+function showNextHint(qid, total) {
+  const shownEl = document.getElementById('hint-shown-' + qid);
+  if (!shownEl) return;
+  let shown = parseInt(shownEl.textContent);
+  if (shown < total) {
+    const nextItem = document.getElementById(`hint-item-${qid}-${shown}`);
+    if (nextItem) nextItem.style.display = '';
+    shown++;
+    shownEl.textContent = shown;
+    if (shown >= total) {
+      const btn = document.getElementById('hint-more-' + qid);
+      if (btn) btn.style.display = 'none';
+    }
+    markHintViewed(qid);
+  }
+}
+
+// 提示不计入"看过答案"；只有点参考答案才计入
+function markHintViewed(qid) { /* 保留 hook，目前不计入 */ }
+
+function revealAnswer(qid) {
+  const warn = document.getElementById('ans-warn-' + qid);
+  const detail = document.getElementById('ans-detail-' + qid);
+  if (warn) warn.style.display = 'none';
+  if (detail) detail.style.display = '';
+  viewedAnswers.add(qid);
+  saveViewedAnswers();
+  refreshProgressPanel();
+}
+
+// ==================================================================
+// ============ 进度 ============
+// ==================================================================
+function resetProgress() {
+  if (!confirm('确定清除所有进度？')) return;
+  progress = {}; viewedAnswers = new Set();
+  saveProgress(); saveViewedAnswers();
+  renderNav(); refreshProgressPanel(); renderMain(currentGroup);
+}
+function clearAllProgress() {
+  if (!confirm('确定清空所有进度？\n包含"通过"、"尝试"和"看过答案"记录。')) return;
+  progress = {}; viewedAnswers = new Set();
+  saveProgress(); saveViewedAnswers();
+  renderNav(); refreshProgressPanel(); renderMain(currentGroup);
+}
+
+function refreshProgressPanel() {
+  const total = LESSONS.length;
+  const passed = Object.values(progress).filter(v => v === 'passed').length;
+  const attempted = Object.keys(progress).filter(k => progress[k] === 'attempted').length;
+  const viewed = viewedAnswers.size;
+  const pct = total > 0 ? Math.round(passed / total * 100) : 0;
+
+  const pt = document.getElementById('progress-text');
+  const pf = document.getElementById('progress-bar-inner');
+  if (pt) pt.textContent = `进度 ${passed} / ${total}`;
+  if (pf) pf.style.width = pct + '%';
+
+  const el = id => document.getElementById(id);
+  if (!el('pp-total-passed')) return;
+  el('pp-total-passed').textContent = passed;
+  el('pp-total-total').textContent = total;
+  el('pp-bar-fill').style.width = pct + '%';
+  el('pp-pct').textContent = pct + '%';
+  el('pp-stat-passed').textContent = passed;
+  el('pp-stat-attempted').textContent = attempted;
+  el('pp-stat-viewed').textContent = viewed;
+
+  const groupsHtml = GROUPS.map(g => {
+    const gTotal = LESSONS.filter(L => L.group === g.key).length;
+    const gPassed = LESSONS.filter(L => L.group === g.key && progress[L.id] === 'passed').length;
+    const gPct = gTotal > 0 ? Math.round(gPassed / gTotal * 100) : 0;
+    return `<div class="pp-group-wrap">
+      <div class="pp-group">
+        <div class="pp-group-name"><span>${g.symbol}</span><span>${g.title}</span></div>
+        <div class="pp-group-val">${gPassed}/${gTotal}</div>
+      </div>
+      <div class="pp-mini-bar"><div class="pp-mini-bar-fill" style="width:${gPct}%"></div></div>
+    </div>`;
+  }).join('');
+  el('pp-groups').innerHTML = groupsHtml;
+}
+
+// ==================================================================
+// ============ 学号弹窗 + 学习报告 ============
+// ==================================================================
+function exportReport() {
+  const modal = document.getElementById('student-id-modal');
+  const input = document.getElementById('student-id-input');
+  const cancelBtn = document.getElementById('student-id-cancel');
+  const confirmBtn = document.getElementById('student-id-confirm');
+  const savedId = localStorage.getItem('sql-lab-nf-student-id') || localStorage.getItem('sqlplay_student_id') || '';
+  input.value = savedId;
+  modal.classList.remove('hidden');
+  setTimeout(() => input.focus(), 50);
+  const doExport = () => {
+    const studentId = input.value.trim();
+    if (!studentId) { input.focus(); return; }
+    localStorage.setItem('sql-lab-nf-student-id', studentId);
+    modal.classList.add('hidden');
+    doExportWithId(studentId);
+  };
+  confirmBtn.onclick = doExport;
+  cancelBtn.onclick = () => modal.classList.add('hidden');
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') doExport();
+    if (e.key === 'Escape') modal.classList.add('hidden');
+  };
+}
+
+function doExportWithId(studentId) {
+  const total = LESSONS.length;
+  const passedIds = LESSONS.filter(L => progress[L.id] === 'passed').map(L => L.id);
+  const attemptedIds = LESSONS.filter(L => progress[L.id] === 'attempted').map(L => L.id);
+  const viewedIds = [...viewedAnswers];
+  const submitTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const ts = new Date().toISOString().slice(0, 10);
+  const rate = total > 0 ? (passedIds.length / total * 100).toFixed(1) : '0.0';
+  const pageLabel = '范式训练';
+
+  const groupRows = GROUPS.map(g => {
+    const gLessons = LESSONS.filter(L => L.group === g.key);
+    const gTotal = gLessons.length;
+    const gPassed = gLessons.filter(L => progress[L.id] === 'passed').length;
+    const gRate = gTotal > 0 ? Math.round(gPassed / gTotal * 100) : 0;
+    return '<tr><td>' + escapeHtml(g.symbol + ' ' + g.title) + '</td>'
+      + '<td class="num-cell">' + gTotal + '</td>'
+      + '<td class="num-cell">' + gPassed + '</td>'
+      + '<td><span class="rate-bar"><span class="rate-bar-fill" style="width:' + gRate + '%"></span></span><span class="rate-num">' + gRate + '%</span></td></tr>';
+  }).join('');
+
+  const badgesOf = (ids, cls) => ids.length
+    ? ids.map(id => '<span class="badge ' + cls + '">' + escapeHtml(id) + '</span>').join('')
+    : '<div class="empty">（无）</div>';
+
+  const html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<title>SQL练习场·范式训练学习报告 - ' + escapeHtml(studentId) + '</title>\n<style>\n'
+    + '* { box-sizing: border-box; }\n'
+    + 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; max-width: 960px; margin: 40px auto; padding: 0 24px; color: #24292f; background: #f6f8fa; line-height: 1.5; }\n'
+    + '.header-card { background: linear-gradient(135deg, #0969da, #218bff); color: #fff; padding: 24px 28px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(9,105,218,0.2); }\n'
+    + '.header-card h1 { margin: 0 0 14px; font-size: 22px; font-weight: 600; }\n'
+    + '.info-row { display: flex; flex-wrap: wrap; gap: 32px; font-size: 14px; }\n'
+    + '.info-item { display: flex; flex-direction: column; gap: 2px; }\n'
+    + '.info-label { opacity: 0.75; font-size: 11px; }\n'
+    + '.info-value { font-size: 15px; font-weight: 500; }\n'
+    + '.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }\n'
+    + '.stat-card { background: #fff; padding: 16px; border-radius: 8px; text-align: center; border: 1px solid #d0d7de; }\n'
+    + '.stat-card .num { font-size: 28px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }\n'
+    + '.stat-card .label { font-size: 12px; color: #57606a; margin-top: 4px; }\n'
+    + '.stat-card.rate .num { color: #0969da; }\n'
+    + '.stat-card.passed .num { color: #1a7f37; }\n'
+    + '.stat-card.attempted .num { color: #bf8700; }\n'
+    + '.stat-card.viewed .num { color: #6e7781; }\n'
+    + '.section-title { font-size: 16px; font-weight: 600; margin: 24px 0 12px; padding-left: 10px; border-left: 3px solid #0969da; color: #24292f; }\n'
+    + '.section-title .count { font-weight: normal; color: #57606a; font-size: 14px; margin-left: 4px; }\n'
+    + 'table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }\n'
+    + 'thead { background: #f6f8fa; }\n'
+    + 'th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #d0d7de; font-size: 14px; }\n'
+    + 'tbody tr:last-child td { border-bottom: none; }\n'
+    + 'th { color: #57606a; font-weight: 600; }\n'
+    + 'td.num-cell { text-align: right; font-variant-numeric: tabular-nums; }\n'
+    + '.rate-bar { display: inline-block; width: 110px; height: 8px; background: #eaeef2; border-radius: 4px; vertical-align: middle; overflow: hidden; }\n'
+    + '.rate-bar-fill { display: block; height: 100%; background: #1a7f37; }\n'
+    + '.rate-num { display: inline-block; margin-left: 8px; font-variant-numeric: tabular-nums; color: #24292f; font-size: 13px; }\n'
+    + '.badges { display: flex; flex-wrap: wrap; gap: 6px; background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #d0d7de; }\n'
+    + '.badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-family: "SF Mono", Consolas, "Courier New", monospace; }\n'
+    + '.badge.passed { background: #dafbe1; color: #1a7f37; border: 1px solid #b5f0c1; }\n'
+    + '.badge.attempted { background: #fff8c5; color: #7d4e00; border: 1px solid #f0e68a; }\n'
+    + '.badge.viewed { background: #f6f8fa; color: #6e7781; border: 1px solid #d0d7de; }\n'
+    + '.empty { color: #8b949e; font-size: 13px; padding: 4px 0; }\n'
+    + '.footer { margin-top: 40px; text-align: center; color: #8b949e; font-size: 12px; padding: 16px; }\n'
+    + '@media print { body { background: #fff; margin: 20px auto; } .header-card, .stat-card, table, .badges { box-shadow: none; } }\n'
+    + '</style>\n</head>\n<body>\n'
+    + '<div class="header-card">\n'
+    + '  <h1>SQL 练习场 · 范式训练学习报告</h1>\n'
+    + '  <div class="info-row">\n'
+    + '    <div class="info-item"><span class="info-label">学号</span><span class="info-value">' + escapeHtml(studentId) + '</span></div>\n'
+    + '    <div class="info-item"><span class="info-label">提交时间</span><span class="info-value">' + escapeHtml(submitTime) + '</span></div>\n'
+    + '    <div class="info-item"><span class="info-label">练习模块</span><span class="info-value">' + escapeHtml(pageLabel) + '</span></div>\n'
+    + '  </div>\n'
+    + '</div>\n'
+    + '<div class="stats-row">\n'
+    + '  <div class="stat-card rate"><div class="num">' + rate + '%</div><div class="label">通过率</div></div>\n'
+    + '  <div class="stat-card passed"><div class="num">' + passedIds.length + '</div><div class="label">通过</div></div>\n'
+    + '  <div class="stat-card attempted"><div class="num">' + attemptedIds.length + '</div><div class="label">尝试未通过</div></div>\n'
+    + '  <div class="stat-card viewed"><div class="num">' + viewedIds.length + '</div><div class="label">看过答案</div></div>\n'
+    + '</div>\n'
+    + '<div class="section-title">分组明细（按难度）</div>\n'
+    + '<table><thead><tr><th>难度分组</th><th>总数</th><th>通过数</th><th>通过率</th></tr></thead><tbody>' + groupRows + '</tbody></table>\n'
+    + '<div class="section-title">已通过题目<span class="count">（' + passedIds.length + '）</span></div>\n'
+    + '<div class="badges">' + badgesOf(passedIds, 'passed') + '</div>\n'
+    + '<div class="section-title">尝试未通过题目<span class="count">（' + attemptedIds.length + '）</span></div>\n'
+    + '<div class="badges">' + badgesOf(attemptedIds, 'attempted') + '</div>\n'
+    + '<div class="section-title">看过答案的题目<span class="count">（' + viewedIds.length + '）</span></div>\n'
+    + '<div class="badges">' + badgesOf(viewedIds, 'viewed') + '</div>\n'
+    + '<div class="footer">SQL 练习场 · 范式训练 · 学号 ' + escapeHtml(studentId) + ' · ' + escapeHtml(submitTime) + ' · 总题数 ' + total + '</div>\n'
+    + '</body>\n</html>';
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `SQL练习场_范式训练学习报告_${studentId}_${ts}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ==================================================================
+// ============ 工具 ============
+// ==================================================================
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+// ==================================================================
+// ============ 启动 ============
+// ==================================================================
+function init() {
+  renderNav();
+  renderMain(currentGroup);
+  refreshProgressPanel();
+}
+init();
+</script>
+</body>
+</html>
