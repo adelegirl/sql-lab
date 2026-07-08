@@ -1,0 +1,2642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL 练习场 · 关系代数练习 · v0.1 原型</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f6f8fa;
+    color: #24292f;
+    font-size: 14px;
+  }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ============ Header ============ */
+  header {
+    background: linear-gradient(90deg, #0969da 0%, #218bff 100%);
+    color: white;
+    padding: 10px 24px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: 48px;
+  }
+  header h1 { margin: 0; font-size: 17px; font-weight: 600; }
+  header h1 .page-label {
+    background: rgba(255,255,255,0.22);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-left: 8px;
+    letter-spacing: 0.5px;
+  }
+  header .status { font-size: 13px; opacity: 0.95; }
+  #status-badge.loading { color: #fff9c4; }
+  #status-badge.ready { color: #b8f5c8; }
+  #status-badge.error { color: #ffcdd2; }
+
+  /* ============ Top Nav ============ */
+  nav.topnav {
+    background: #ffffff;
+    border-bottom: 1px solid #d0d7de;
+    padding: 0 24px;
+    display: flex;
+    gap: 0;
+    position: sticky;
+    top: 48px;
+    z-index: 99;
+    height: 44px;
+    align-items: stretch;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  nav.topnav a {
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    font-size: 14px;
+    color: #57606a;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    font-weight: 500;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  nav.topnav a:hover:not(.disabled):not(.active) { color: #0969da; text-decoration: none; }
+  nav.topnav a.active {
+    color: #0969da;
+    border-bottom-color: #0969da;
+    font-weight: 600;
+  }
+
+  /* ============ Layout ============ */
+  .layout {
+    display: grid;
+    grid-template-columns: 220px 1fr 300px;
+    min-height: calc(100vh - 92px);
+  }
+  @media (max-width: 1400px) {
+    .layout { grid-template-columns: 220px 1fr; }
+    .progress-panel { display: none !important; }
+  }
+
+  aside.sidebar {
+    background: #ffffff;
+    border-right: 1px solid #d0d7de;
+    padding: 12px 0;
+    position: sticky;
+    top: 92px;
+    height: calc(100vh - 92px);
+    overflow-y: auto;
+  }
+
+  .progress-panel {
+    background: #ffffff;
+    border-left: 1px solid #d0d7de;
+    padding: 16px;
+    position: sticky;
+    top: 92px;
+    height: calc(100vh - 92px);
+    overflow-y: auto;
+    font-size: 13px;
+  }
+  .progress-panel h3 {
+    margin: 0 0 12px; font-size: 14px; color: #24292f;
+    display: flex; align-items: center; gap: 6px;
+    padding-bottom: 10px; border-bottom: 2px solid #0969da;
+  }
+  .pp-section { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #eaecef; }
+  .pp-section:last-of-type { border-bottom: none; }
+  .pp-section-title {
+    font-size: 11px; color: #8b949e; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 10px; font-weight: 600;
+  }
+  .pp-total { text-align: center; padding: 8px 0; }
+  .pp-total-num { font-size: 34px; font-weight: 700; color: #0969da; line-height: 1; }
+  .pp-total-num .pp-slash { color: #8b949e; font-weight: 400; font-size: 22px; }
+  .pp-total-label { color: #57606a; font-size: 12px; margin-top: 4px; }
+  .pp-bar { height: 8px; background: #eaecef; border-radius: 4px; overflow: hidden; margin: 12px 0 4px; }
+  .pp-bar-fill {
+    height: 100%; background: linear-gradient(90deg, #0969da, #2da44e);
+    border-radius: 4px; transition: width 0.4s ease;
+  }
+  .pp-pct { text-align: right; font-size: 11px; color: #57606a; }
+  .pp-stat {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; font-size: 13px; color: #24292f;
+  }
+  .pp-stat-label { display: flex; align-items: center; gap: 6px; }
+  .pp-stat-value { font-weight: 600; }
+  .pp-group-wrap { margin-bottom: 8px; }
+  .pp-group {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 0; font-size: 12px; color: #24292f;
+  }
+  .pp-group-name { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+  .pp-group-name span:last-child {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pp-group-val { color: #57606a; font-size: 11px; font-family: monospace; flex-shrink: 0; margin-left: 8px; }
+  .pp-mini-bar { height: 3px; background: #eaecef; border-radius: 2px; margin-top: 2px; overflow: hidden; }
+  .pp-mini-bar-fill { height: 100%; background: #0969da; border-radius: 2px; transition: width 0.4s ease; }
+  .pp-btn {
+    width: 100%; padding: 8px; margin-bottom: 8px;
+    border: 1px solid #d0d7de; background: white; border-radius: 6px;
+    font-size: 12px; cursor: pointer; color: #24292f; transition: all 0.15s;
+  }
+  .pp-btn:hover { background: #f6f8fa; border-color: #0969da; color: #0969da; }
+  .pp-btn.danger:hover { background: #ffebe9; border-color: #cf222e; color: #cf222e; }
+  .pp-btn.primary { background: #0969da; color: #fff; border-color: #0860c8; }
+  .pp-btn.primary:hover { background: #0860c8; color: #fff; }
+
+  .progress-bar {
+    padding: 8px 16px 12px;
+    font-size: 11px;
+    color: #57606a;
+    border-bottom: 1px solid #eaecef;
+    margin-bottom: 8px;
+  }
+  .progress-fill {
+    height: 4px; background: #eaecef; border-radius: 2px;
+    overflow: hidden; margin-top: 4px;
+  }
+  .progress-fill > div {
+    height: 100%;
+    background: linear-gradient(90deg, #2da44e, #4ac26b);
+    transition: width 0.3s;
+  }
+  .lesson-group {
+    padding: 8px 16px 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #57606a;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  .lesson-group:hover { color: #0969da; }
+  .lesson-group.active { color: #0969da; }
+  .lesson-item {
+    padding: 5px 16px 5px 28px;
+    font-size: 13px;
+    color: #24292f;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.4;
+  }
+  .lesson-item:hover { background: #f6f8fa; }
+  .lesson-item .lesson-num { color: #8b949e; font-size: 11px; font-family: monospace; min-width: 32px; }
+  .lesson-item .title-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lesson-item .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #d0d7de; flex-shrink: 0;
+  }
+  .lesson-item.passed .status-dot { background: #2da44e; }
+  .lesson-item.attempted .status-dot { background: #fb8500; }
+  .tool-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #57606a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tool-item:hover { background: #f6f8fa; color: #24292f; }
+
+  /* ============ Main content ============ */
+  main {
+    padding: 24px 32px 80px;
+    max-width: 980px;
+    width: 100%;
+  }
+  .group-header { margin-bottom: 24px; }
+  .group-header h1 {
+    font-size: 24px;
+    margin: 0 0 8px;
+    font-weight: 700;
+    color: #24292f;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #0969da;
+    display: inline-block;
+  }
+  .group-header .subtitle {
+    color: #57606a;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .group-header .cheat {
+    background: #fff8f0;
+    border: 1px solid #ffdfb5;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #7d4e00;
+    line-height: 1.7;
+  }
+  .group-header .cheat b { color: #953800; }
+
+  /* ============ DB preview ============ */
+  .db-preview {
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .db-preview-header {
+    background: #EEF3E2;
+    padding: 8px 14px;
+    font-size: 13px;
+    color: #24292f;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #d0d7de;
+  }
+  .db-preview-header .tabs { display: flex; gap: 4px; }
+  .db-preview-header .tab {
+    padding: 3px 10px;
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #24292f;
+    font-family: monospace;
+  }
+  .db-preview-header .tab.active { background: #0969da; color: white; border-color: #0860c8; }
+  .db-preview-body { padding: 0; overflow-x: auto; max-height: 240px; overflow-y: auto; }
+  .db-preview-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+  }
+  .db-preview-body th, .db-preview-body td {
+    padding: 5px 10px;
+    border-bottom: 1px solid #eaecef;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .db-preview-body th {
+    background: #f6f8fa;
+    font-weight: 600;
+    color: #24292f;
+    position: sticky;
+    top: 0;
+  }
+
+  /* ============ Problem card ============ */
+  .qu {
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    scroll-margin-top: 60px;
+  }
+  .qu h2 {
+    margin: 0 0 14px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #24292f;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eaecef;
+  }
+  .qu h2 .qid {
+    font-family: monospace;
+    color: #0969da;
+    font-size: 14px;
+    background: #ddf4ff;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+  }
+  .badge.easy { background: #2da44e; }
+  .badge.medium { background: #fb8500; }
+  .badge.hard { background: #cf222e; }
+
+  .qu .intro {
+    color: #24292f;
+    line-height: 1.7;
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+  .qu .intro b { color: #0550ae; font-weight: 700; }
+  .qu .imper {
+    background: #ddf4ff;
+    padding: 10px 14px;
+    border-left: 3px solid #0969da;
+    border-radius: 4px;
+    margin-bottom: 14px;
+    color: #0550ae;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+  .qu .imper b { color: #082567; }
+  .qu code {
+    background: #eff1f3;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 12px;
+    color: #cf222e;
+  }
+
+  /* ============ 关系代数构建器 ============ */
+  .builder {
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    background: #fafbfc;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .builder-section {
+    padding: 10px 14px;
+    border-bottom: 1px solid #eaecef;
+  }
+  .builder-section:last-child { border-bottom: none; }
+  .builder-section-title {
+    font-size: 11px;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .builder-section-title .hint-txt {
+    text-transform: none;
+    color: #8b949e;
+    font-weight: 400;
+    letter-spacing: 0;
+    font-size: 11px;
+  }
+
+  .op-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .op-toolbar .op-label {
+    font-size: 11px;
+    color: #57606a;
+    margin-right: 4px;
+    font-weight: 600;
+  }
+  .op-btn {
+    padding: 5px 12px;
+    border: 1px solid #d0d7de;
+    background: #ffffff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: #24292f;
+    transition: all 0.15s;
+    min-width: 34px;
+    text-align: center;
+    font-family: "SF Mono", "Consolas", "Menlo", "STIX Two Math", "Cambria Math", serif;
+  }
+  .op-btn:hover:not(:disabled) {
+    background: #ddf4ff;
+    border-color: #0969da;
+    color: #0969da;
+  }
+  .op-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .op-btn.table-btn {
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    color: #0550ae;
+    background: #ddf4ff;
+    border-color: #a5d6ff;
+    min-width: 60px;
+  }
+  .op-btn.table-btn:hover {
+    background: #b6e3ff;
+    color: #082567;
+  }
+  .op-btn .op-name {
+    font-size: 10px;
+    color: #8b949e;
+    margin-left: 4px;
+    font-weight: 400;
+    font-family: inherit;
+  }
+  .op-btn:hover .op-name { color: #0969da; }
+
+  .ast-canvas {
+    background: white;
+    border: 1px dashed #d0d7de;
+    border-radius: 6px;
+    padding: 14px 16px;
+    min-height: 46px;
+    font-size: 16px;
+    line-height: 1.9;
+    color: #24292f;
+    font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", "Times New Roman", serif;
+    word-break: break-word;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .ast-canvas.empty {
+    color: #8b949e;
+    font-style: italic;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .ast-canvas sub {
+    font-size: 0.65em;
+    color: #953800;
+    vertical-align: sub;
+    font-family: "SF Mono", Consolas, monospace;
+    font-style: normal;
+  }
+  .ast-canvas .ast-table {
+    color: #0550ae;
+    font-weight: 600;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 0.85em;
+  }
+  .ast-canvas .ast-op {
+    color: #cf222e;
+    margin: 0 4px;
+    font-weight: bold;
+  }
+
+  .favorites {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .favorites .fav-empty {
+    color: #8b949e;
+    font-size: 12px;
+    font-style: italic;
+  }
+  .fav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: #ffffff;
+    border: 1px solid #eaecef;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .fav-item .fav-name {
+    font-size: 11px;
+    color: #57606a;
+    font-family: monospace;
+    min-width: 32px;
+    font-weight: 600;
+  }
+  .fav-item .fav-expr {
+    flex: 1;
+    font-family: "STIX Two Math", "Cambria Math", "Times New Roman", serif;
+    color: #24292f;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .fav-item .fav-expr sub {
+    font-size: 0.65em; color: #953800;
+    font-family: monospace; vertical-align: sub;
+  }
+  .fav-item .fav-expr .ast-table {
+    color: #0550ae; font-weight: 600;
+    font-family: monospace; font-size: 0.85em;
+  }
+  .fav-item button {
+    padding: 2px 8px;
+    font-size: 11px;
+    border: 1px solid #d0d7de;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #57606a;
+  }
+  .fav-item button:hover { background: #f6f8fa; color: #0969da; border-color: #0969da; }
+  .fav-item button.danger:hover { background: #ffebe9; color: #cf222e; border-color: #cf222e; }
+
+  .builder-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  button {
+    padding: 5px 12px;
+    border: 1px solid #d0d7de;
+    background: #f6f8fa;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #24292f;
+    transition: all 0.15s;
+  }
+  button:hover:not(:disabled) { background: #eaecef; border-color: #afb8c1; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.primary { background: #2da44e; color: white; border-color: #2c974b; }
+  button.primary:hover:not(:disabled) { background: #2c974b; }
+  button.blue { background: #0969da; color: white; border-color: #0860c8; }
+  button.blue:hover:not(:disabled) { background: #0860c8; }
+  button.ghost { background: transparent; font-size: 12px; padding: 4px 10px; color: #57606a; }
+
+  .sql-preview {
+    background: #f6f8fa;
+    border: 1px solid #eaecef;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+    font-size: 12px;
+    color: #57606a;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 120px;
+    overflow-y: auto;
+    display: none;
+  }
+  .sql-preview.show { display: block; }
+  .sql-preview .sql-kw { color: #cf222e; font-weight: bold; }
+
+  .result-box {
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    overflow: hidden;
+    display: none;
+    margin-bottom: 8px;
+  }
+  .result-box.show { display: block; }
+  .result-box .result-header {
+    padding: 6px 12px;
+    background: #f6f8fa;
+    font-size: 12px;
+    color: #57606a;
+    border-bottom: 1px solid #d0d7de;
+    display: flex;
+    justify-content: space-between;
+  }
+  .result-box .result-body { max-height: 300px; overflow: auto; }
+  table.result {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+  }
+  table.result th, table.result td {
+    padding: 4px 10px;
+    border-bottom: 1px solid #eaecef;
+    text-align: left;
+    white-space: nowrap;
+  }
+  table.result th { background: #f6f8fa; font-weight: 600; position: sticky; top: 0; }
+  table.result td.null { color: #8b949e; font-style: italic; }
+  .err-msg {
+    padding: 10px 14px;
+    color: #cf222e;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    background: #ffebe9;
+  }
+
+  .feedback {
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    display: none;
+    margin-bottom: 8px;
+  }
+  .feedback.show { display: block; }
+  .feedback.pass { background: #dafbe1; color: #116329; border: 1px solid #4ac26b; }
+  .feedback.fail { background: #ffebe9; color: #82071e; border: 1px solid #ffa198; }
+  .feedback.info { background: #ddf4ff; color: #0550ae; border: 1px solid #54aeff; }
+
+  details.ans-block {
+    margin-top: 8px;
+    background: #f6f8fa;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  details.ans-block summary { cursor: pointer; color: #0969da; font-weight: 600; }
+  details.ans-block .ans-expr {
+    background: white;
+    padding: 10px 12px;
+    border-radius: 4px;
+    border: 1px solid #eaecef;
+    margin: 8px 0 4px;
+    font-family: "STIX Two Math", "Cambria Math", "Times New Roman", serif;
+    font-size: 16px;
+    color: #24292f;
+    line-height: 1.9;
+  }
+  details.ans-block .ans-expr sub {
+    font-size: 0.65em; color: #953800;
+    font-family: monospace; vertical-align: sub;
+  }
+  details.ans-block pre {
+    background: white;
+    padding: 10px 12px;
+    border-radius: 4px;
+    border: 1px solid #eaecef;
+    margin: 4px 0;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: #24292f;
+  }
+  details.hint-block {
+    margin-top: 8px;
+    background: #fff8f0;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    border: 1px solid #ffdfb5;
+  }
+  details.hint-block summary { cursor: pointer; color: #953800; font-weight: 600; }
+  details.hint-block > div { padding-top: 8px; line-height: 1.7; }
+
+  /* ============ 运算符配置弹窗 ============ */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    min-width: 380px;
+    max-width: 520px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  }
+  .modal-card h3 {
+    margin: 0 0 10px;
+    color: #0969da;
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .modal-card .modal-desc {
+    margin: 0 0 14px;
+    color: #57606a;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .modal-card input, .modal-card select {
+    padding: 6px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .modal-card input:focus, .modal-card select:focus {
+    outline: none;
+    border-color: #0969da;
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+  }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #eaecef;
+  }
+  .modal-actions button { min-width: 78px; padding: 6px 14px; }
+
+  .cond-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .cond-row select { min-width: 90px; }
+  .cond-row input { flex: 1; min-width: 100px; }
+  .cond-row .connector {
+    font-weight: 600;
+    color: #cf222e;
+    min-width: 40px;
+    text-align: center;
+  }
+  .cond-row button.del-cond {
+    padding: 4px 8px;
+    font-size: 12px;
+    color: #cf222e;
+  }
+  .cond-add {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .cond-add button {
+    font-size: 12px;
+    padding: 4px 10px;
+    color: #57606a;
+  }
+
+  .field-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .field-checkboxes label {
+    padding: 4px 10px;
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+  }
+  .field-checkboxes label:hover { border-color: #0969da; color: #0969da; }
+  .field-checkboxes label.selected {
+    background: #0969da; color: white; border-color: #0860c8;
+  }
+  .field-checkboxes label.selected .order-num {
+    background: rgba(255,255,255,0.35);
+    color: white;
+    padding: 0 5px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 2px;
+  }
+  .field-checkboxes input { display: none; }
+
+  .operand-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .operand-picker .picker-group {
+    padding: 8px 10px;
+    background: #f6f8fa;
+    border-radius: 6px;
+  }
+  .operand-picker .picker-group-title {
+    font-size: 11px;
+    color: #57606a;
+    font-weight: 600;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .operand-picker .picker-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .operand-picker label.picker-opt {
+    padding: 6px 12px;
+    background: white;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    font-family: monospace;
+  }
+  .operand-picker label.picker-opt:hover { border-color: #0969da; color: #0969da; }
+  .operand-picker label.picker-opt.selected {
+    background: #0969da; color: white; border-color: #0860c8;
+  }
+  .operand-picker input[type=radio] { display: none; }
+  .operand-picker .picker-opt-expr {
+    font-family: "STIX Two Math", "Cambria Math", "Times New Roman", serif;
+    font-size: 13px;
+  }
+  .operand-picker .picker-opt-expr sub {
+    font-size: 0.7em; color: #953800; font-family: monospace;
+  }
+  .operand-picker label.picker-opt.selected .picker-opt-expr sub {
+    color: #ffdfb5;
+  }
+
+  /* ============ Footer ============ */
+  footer.site-footer {
+    padding: 16px 24px;
+    background: #ffffff;
+    border-top: 1px solid #d0d7de;
+    text-align: center;
+    color: #8b949e;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  footer.site-footer .footer-brand { color: #0969da; font-weight: 600; }
+  footer.site-footer a { color: #57606a; }
+</style>
+</head>
+
+<body>
+<header>
+  <h1>❄️ SQL 练习场 · 关系代数练习 <span class="page-label">Relational Algebra · v0.1 原型</span></h1>
+  <div class="status">状态：<span id="status-badge" class="loading">正在加载 SQLite 引擎…</span></div>
+</header>
+
+<nav class="topnav">
+  <a href="index.html">📖 查询练习 <span style="opacity:0.6;font-size:12px;margin-left:2px">50题</span></a>
+  <a href="ddl.html">🏗️ DDL 建表 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+  <a href="dml.html">📝 DML 数据操作 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+  <a href="dcl.html">🔐 DCL 权限控制 <span style="opacity:0.6;font-size:12px;margin-left:2px">15题</span></a>
+  <a href="algebra.html" class="active">🧮 关系代数 <span style="opacity:0.7;font-size:12px;margin-left:2px">24题</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="progress-bar">
+      <span id="progress-text">进度 0 / 24</span>
+      <div class="progress-fill"><div id="progress-bar-inner" style="width:0%"></div></div>
+    </div>
+    <div id="nav-list"></div>
+    <div class="lesson-group" style="margin-top:12px; cursor:default">🛠️ 工具</div>
+    <div class="tool-item" onclick="resetDB()" title="重置为初始 Student/Course/SC 数据">↺ 重置数据库</div>
+    <div class="tool-item" onclick="resetProgress()" title="清除已通过/尝试过的题目记录（数据库不受影响）">🧹 清除进度</div>
+  </aside>
+
+  <main id="main-content"><!-- 动态渲染 --></main>
+
+  <aside class="progress-panel">
+    <h3>📊 我的学习进度</h3>
+    <div class="pp-section">
+      <div class="pp-total">
+        <div class="pp-total-num">
+          <span id="pp-total-passed">0</span><span class="pp-slash"> / </span><span id="pp-total-total">24</span>
+        </div>
+        <div class="pp-total-label">✅ 已通过 / 总题数</div>
+      </div>
+      <div class="pp-bar"><div class="pp-bar-fill" id="pp-bar-fill" style="width:0%"></div></div>
+      <div class="pp-pct" id="pp-pct">0%</div>
+    </div>
+    <div class="pp-section">
+      <div class="pp-section-title">状态明细</div>
+      <div class="pp-stat">
+        <div class="pp-stat-label">✅ 通过</div>
+        <div class="pp-stat-value" id="pp-stat-passed">0</div>
+      </div>
+      <div class="pp-stat">
+        <div class="pp-stat-label">🟠 尝试过</div>
+        <div class="pp-stat-value" id="pp-stat-attempted">0</div>
+      </div>
+      <div class="pp-stat">
+        <div class="pp-stat-label">👀 看过答案</div>
+        <div class="pp-stat-value" id="pp-stat-viewed">0</div>
+      </div>
+    </div>
+    <div class="pp-section">
+      <div class="pp-section-title">分组进度</div>
+      <div id="pp-groups"></div>
+    </div>
+    <div class="pp-section">
+      <div class="pp-section-title">操作</div>
+      <button class="pp-btn primary" onclick="exportReport()">📥 导出学习报告</button>
+      <button class="pp-btn danger" onclick="clearAllProgress()">🗑️ 清空所有进度</button>
+    </div>
+  </aside>
+</div>
+
+<footer class="site-footer">
+  <div><span class="footer-brand">SQL 练习场 · 关系代数练习</span> · v0.1 原型 · 面向非计算机专业本科生的《数据库原理与应用》配套练习</div>
+  <div style="margin-top:4px;opacity:0.8">上海电力大学 · 教材：赵明渊《数据库原理与应用（SQL Server）》电子工业出版社 2019 · sql.js in-browser</div>
+</footer>
+
+<!-- 学号输入弹窗 -->
+<div id="student-id-modal" class="modal-overlay hidden">
+  <div class="modal-card" style="min-width:340px;max-width:400px">
+    <h3>导出学习报告</h3>
+    <p class="modal-desc">请输入你的学号，用于提交作业时识别身份：</p>
+    <input id="student-id-input" type="text" placeholder="例如：20260701001" autocomplete="off" style="width:100%;margin-bottom:8px" />
+    <div class="modal-actions">
+      <button id="student-id-cancel">取消</button>
+      <button id="student-id-confirm" class="blue">提交导出</button>
+    </div>
+  </div>
+</div>
+
+<!-- 运算符配置弹窗（动态复用） -->
+<div id="op-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3 id="op-modal-title">运算符配置</h3>
+    <p class="modal-desc" id="op-modal-desc"></p>
+    <div id="op-modal-body"></div>
+    <div class="modal-actions">
+      <button id="op-modal-cancel">取消</button>
+      <button id="op-modal-confirm" class="blue">确定</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.js"></script>
+<script>
+// ============ 数据库初始化 SQL ============
+// 教材经典 Student/Course/SC 三表案例（王珊《数据库系统概论》命名 + 主人指定风格）
+const INIT_SQL = `
+DROP TABLE IF EXISTS SC;
+DROP TABLE IF EXISTS Student;
+DROP TABLE IF EXISTS Course;
+
+CREATE TABLE Student (
+  Sno   TEXT PRIMARY KEY,
+  Sname TEXT NOT NULL,
+  Ssex  TEXT,
+  Sage  INTEGER,
+  Sdept TEXT
+);
+
+CREATE TABLE Course (
+  Cno     TEXT PRIMARY KEY,
+  Cname   TEXT NOT NULL,
+  Ccredit INTEGER
+);
+
+CREATE TABLE SC (
+  Sno   TEXT,
+  Cno   TEXT,
+  Grade INTEGER,
+  PRIMARY KEY(Sno, Cno),
+  FOREIGN KEY(Sno) REFERENCES Student(Sno),
+  FOREIGN KEY(Cno) REFERENCES Course(Cno)
+);
+
+-- 学生：8 人，覆盖 CS / MA / IS 三个系
+INSERT INTO Student VALUES
+('200215121','李勇','男',20,'CS'),
+('200215122','刘晨','女',19,'CS'),
+('200215123','王敏','女',18,'MA'),
+('200215125','张立','男',19,'IS'),
+('200215126','赵四','男',20,'CS'),
+('200215127','钱七','女',19,'MA'),
+('200215128','孙八','男',21,'IS'),
+('200215129','周九','女',18,'CS');
+
+-- 课程：6 门
+INSERT INTO Course VALUES
+('1','数据库',4),
+('2','数学',2),
+('3','信息系统',4),
+('4','操作系统',3),
+('5','数据结构',4),
+('6','数据处理',2);
+
+-- 选课：确保李勇（200215121）选了全部 6 门课（用于除法目标）
+INSERT INTO SC VALUES
+('200215121','1',92),
+('200215121','2',85),
+('200215121','3',88),
+('200215121','4',90),
+('200215121','5',78),
+('200215121','6',80),
+('200215122','1',85),
+('200215122','2',90),
+('200215122','3',82),
+('200215123','2',88),
+('200215125','1',75),
+('200215125','2',68),
+('200215125','3',80),
+('200215125','4',72),
+('200215126','1',82),
+('200215126','3',76),
+('200215126','5',65),
+('200215127','2',95),
+('200215128','3',78),
+('200215128','4',82),
+('200215129','1',88),
+('200215129','2',72);
+`;
+
+// 各表 schema（用于 UI 字段选择、除法 schema 推断）
+const TABLE_SCHEMA = {
+  'Student': ['Sno','Sname','Ssex','Sage','Sdept'],
+  'Course':  ['Cno','Cname','Ccredit'],
+  'SC':      ['Sno','Cno','Grade'],
+};
+
+// ============ 分组配置 ============
+const GROUPS = [
+  { key:'select',    symbol:'σ', title:'选择 σ',        subtitle:'从关系中挑出满足条件的元组（行）。σ 是一元运算，用下标写条件。', color:'#0969da' },
+  { key:'project',   symbol:'π', title:'投影 π',        subtitle:'从关系中挑出指定的属性（列），结果自动去重（集合语义）。', color:'#0969da' },
+  { key:'union',     symbol:'∪', title:'并 ∪',           subtitle:'两个相容关系的元组合集（去重）。要求两个关系的属性列表相同。', color:'#0969da' },
+  { key:'intersect', symbol:'∩', title:'交 ∩',           subtitle:'两个相容关系的公共元组。等价于 R − (R − S)，但集合系统直接支持。', color:'#0969da' },
+  { key:'except',    symbol:'−', title:'差 −',           subtitle:'属于 R 但不属于 S 的元组。要求两个关系相容。', color:'#0969da' },
+  { key:'cross',     symbol:'×', title:'笛卡尔积 ×',    subtitle:'两个关系的元组两两拼接。结果的列数是两边列数之和，行数是两边行数之积。', color:'#0969da' },
+  { key:'join',      symbol:'⋈', title:'连接 ⋈',        subtitle:'笛卡尔积后再选择的组合运算。自然连接会自动按同名列匹配并去除重复列。', color:'#0969da' },
+  { key:'divide',    symbol:'÷', title:'除 ÷',           subtitle:'求"包含 S 中所有值组合"的 R 元组。经典应用：查询选修了所有课程的学生。', color:'#0969da' },
+];
+
+// ============ 24 题题库 ============
+const LESSONS = [
+  // ===== 选择 σ (3 题) =====
+  {
+    id:'R1_1', group:'select', title:'查询计算机系（CS）的所有学生', difficulty:'easy',
+    natural:'在 <b>Student</b> 关系中，找出所有系别为 <b>"CS"</b> 的学生记录（返回全部字段）。',
+    imper:'用 <b>选择运算 σ</b> 筛选出 <code>Sdept = "CS"</code> 的元组。',
+    hints:[
+      '第 1 步：点击 <b>[Student]</b> 按钮把 Student 作为当前表达式的叶子。',
+      '第 2 步：点击 <b>[σ]</b> 按钮，在弹窗里选字段 <code>Sdept</code>、运算符 <code>=</code>、值 <code>CS</code>。',
+      '第 3 步：点击【▶ 运行】看结果，点【✓ 提交】对答案。',
+    ],
+    answerAlgebra: {type:'select', cond:"Sdept='CS'", child:{type:'table',name:'Student'}},
+  },
+  {
+    id:'R1_2', group:'select', title:'多条件筛选：年龄大于等于 19 的女生', difficulty:'medium',
+    natural:'从 Student 中找出 <b>年龄 ≥ 19</b> 且 <b>性别为"女"</b> 的学生。',
+    imper:'用 σ 添加两个用 AND 连接的条件：<code>Sage &gt;= 19 AND Ssex = "女"</code>。',
+    hints:[
+      '在 σ 弹窗里可以加多行条件，行间选择 AND 或 OR 连接。',
+      '第 1 条：<code>Sage</code> <code>&gt;=</code> <code>19</code>（数值，不用加引号）；第 2 条：<code>Ssex</code> <code>=</code> <code>女</code>。',
+    ],
+    answerAlgebra: {type:'select', cond:"Sage>=19 AND Ssex='女'", child:{type:'table',name:'Student'}},
+  },
+  {
+    id:'R1_3', group:'select', title:'复合条件（AND/OR 混合）', difficulty:'hard',
+    natural:'查询 <b>CS 系或 MA 系</b>、且 <b>年龄小于 20</b> 的学生。',
+    imper:'条件表达式：<code>(Sdept="CS" OR Sdept="MA") AND Sage &lt; 20</code>。',
+    hints:[
+      '本题需要 OR 和 AND 混合。在 σ 弹窗里，前两行用 OR 连接，第三行用 AND 连接。',
+      '构建器会自动在 OR 段外面加括号：<code>(Sdept="CS" OR Sdept="MA") AND Sage&lt;20</code>。',
+    ],
+    answerAlgebra: {type:'select', cond:"(Sdept='CS' OR Sdept='MA') AND Sage<20", child:{type:'table',name:'Student'}},
+  },
+
+  // ===== 投影 π (3 题) =====
+  {
+    id:'R2_1', group:'project', title:'查询所有学生的姓名和年龄', difficulty:'easy',
+    natural:'只保留 Student 关系的 <b>Sname</b> 和 <b>Sage</b> 两列。',
+    imper:'用 <b>投影运算 π</b> 保留 <code>Sname, Sage</code> 两个属性。',
+    hints:[
+      '先点 [Student]，再点 [π]，在弹窗里勾选 <code>Sname</code> 和 <code>Sage</code>（勾选顺序决定输出列的顺序）。',
+      '关系代数的投影会自动去重——本题因为姓名唯一，看不出去重效果。',
+    ],
+    answerAlgebra: {type:'project', fields:['Sname','Sage'], child:{type:'table',name:'Student'}},
+  },
+  {
+    id:'R2_2', group:'project', title:'查询学生所在的所有系别（体会自动去重）', difficulty:'medium',
+    natural:'查询 <b>Student 表里出现过哪些系</b>——即使有多个学生同系，也只出现一次。',
+    imper:'π 只保留 <code>Sdept</code>。注意关系代数是<b>集合语义</b>，重复行会自动去掉。',
+    hints:[
+      'Student 里有 8 个学生，但系只有 3 个（CS、MA、IS）。投影后结果只有 3 行。',
+      '这就是关系代数 π 和 SQL <code>SELECT</code> 的关键区别：SQL 默认保留重复，π 天然去重（翻译时会加 DISTINCT）。',
+    ],
+    answerAlgebra: {type:'project', fields:['Sdept'], child:{type:'table',name:'Student'}},
+  },
+  {
+    id:'R2_3', group:'project', title:'多字段投影 + 选择组合', difficulty:'hard',
+    natural:'查询 <b>CS 系学生</b> 的 <b>学号、姓名、系别</b>。',
+    imper:'先 σ 过滤 CS 系，再 π 保留 <code>Sno, Sname, Sdept</code>。',
+    hints:[
+      '先构建 σ_{Sdept="CS"}(Student)，再点 [π] 保留 3 个字段。',
+      '也可以先 π 再 σ——但 σ 需要用到 <code>Sdept</code>，如果先 π 掉就没法过滤了。<b>选择要放在投影内层。</b>',
+    ],
+    answerAlgebra: {type:'project', fields:['Sno','Sname','Sdept'], child:{type:'select', cond:"Sdept='CS'", child:{type:'table',name:'Student'}}},
+  },
+
+  // ===== 并 ∪ (3 题) =====
+  {
+    id:'R3_1', group:'union', title:'选修了课程 1 或课程 2 的学生学号', difficulty:'easy',
+    natural:'查询 <b>选修了 1 号课</b> 或 <b>选修了 2 号课</b> 的学生学号（去重）。',
+    imper:'π<sub>Sno</sub>(σ<sub>Cno="1"</sub>(SC)) <b>∪</b> π<sub>Sno</sub>(σ<sub>Cno="2"</sub>(SC))',
+    hints:[
+      '步骤 1：构建 π_Sno(σ_{Cno="1"}(SC))，然后点【💾 保存到收藏夹】。',
+      '步骤 2：点【↺ 重置】清空画布，再构建 π_Sno(σ_{Cno="2"}(SC))。',
+      '步骤 3：点【∪】按钮，第二操作数选收藏夹里的第一个表达式。',
+    ],
+    answerAlgebra: {type:'union',
+      left:{type:'project',fields:['Sno'],child:{type:'select',cond:"Cno='1'",child:{type:'table',name:'SC'}}},
+      right:{type:'project',fields:['Sno'],child:{type:'select',cond:"Cno='2'",child:{type:'table',name:'SC'}}}},
+  },
+  {
+    id:'R3_2', group:'union', title:'男生 或 CS 系学生', difficulty:'medium',
+    natural:'查询 <b>所有男生</b> 或 <b>所有 CS 系学生</b>（并集，去重）。',
+    imper:'σ<sub>Ssex="男"</sub>(Student) <b>∪</b> σ<sub>Sdept="CS"</sub>(Student)',
+    hints:[
+      '两个操作数的属性列表要相同——本题两边都是 Student 的全字段，所以直接兼容。',
+      '也可以用一次选择实现：σ_{Ssex="男" OR Sdept="CS"}(Student)。关系代数里两者等价。',
+    ],
+    answerAlgebra: {type:'union',
+      left:{type:'select',cond:"Ssex='男'",child:{type:'table',name:'Student'}},
+      right:{type:'select',cond:"Sdept='CS'",child:{type:'table',name:'Student'}}},
+  },
+  {
+    id:'R3_3', group:'union', title:'三个并集：选了课 1 或课 2 或课 3 的学生', difficulty:'hard',
+    natural:'查询 <b>选修过 1、2、3 号课任一门</b>的学生学号（去重）。',
+    imper:'π<sub>Sno</sub>(σ<sub>Cno="1"</sub>(SC)) ∪ π<sub>Sno</sub>(σ<sub>Cno="2"</sub>(SC)) ∪ π<sub>Sno</sub>(σ<sub>Cno="3"</sub>(SC))',
+    hints:[
+      '需要两次 ∪ 运算。可以先做前两个的并集，保存到收藏夹，再和第三个求并。',
+      '或者更简单：<b>π_Sno(σ_{Cno="1" OR Cno="2" OR Cno="3"}(SC))</b>——效果等价，属于关系代数等价变换。',
+    ],
+    answerAlgebra: {type:'union',
+      left:{type:'union',
+        left:{type:'project',fields:['Sno'],child:{type:'select',cond:"Cno='1'",child:{type:'table',name:'SC'}}},
+        right:{type:'project',fields:['Sno'],child:{type:'select',cond:"Cno='2'",child:{type:'table',name:'SC'}}}},
+      right:{type:'project',fields:['Sno'],child:{type:'select',cond:"Cno='3'",child:{type:'table',name:'SC'}}}},
+  },
+
+  // ===== 交 ∩ (3 题) =====
+  {
+    id:'R4_1', group:'intersect', title:'同时选了课 1 和课 2 的学生学号', difficulty:'easy',
+    natural:'查询 <b>既选了 1 号课，又选了 2 号课</b> 的学生学号。',
+    imper:'π<sub>Sno</sub>(σ<sub>Cno="1"</sub>(SC)) <b>∩</b> π<sub>Sno</sub>(σ<sub>Cno="2"</sub>(SC))',
+    hints:[
+      '交集的两个操作数属性要一致——本题两边都是 π_Sno(...)，只有一列 Sno。',
+      '这题的答案是"选了 1 又选了 2"的学生，不是"选了 1 或 2"（那是并集）。',
+    ],
+    answerAlgebra: {type:'intersect',
+      left:{type:'project',fields:['Sno'],child:{type:'select',cond:"Cno='1'",child:{type:'table',name:'SC'}}},
+      right:{type:'project',fields:['Sno'],child:{type:'select',cond:"Cno='2'",child:{type:'table',name:'SC'}}}},
+  },
+  {
+    id:'R4_2', group:'intersect', title:'CS 系 且 年龄 ≥ 19 的学生', difficulty:'medium',
+    natural:'查询 <b>CS 系</b> 学生 <b>与</b> <b>年龄 ≥ 19</b> 学生的<b>交集</b>。',
+    imper:'σ<sub>Sdept="CS"</sub>(Student) <b>∩</b> σ<sub>Sage&gt;=19</b>(Student)',
+    hints:[
+      '两边都是从 Student 出来的，属性列表完全一致（Sno, Sname, Ssex, Sage, Sdept 全 5 列）。',
+      '关系代数里交集 R ∩ S 等价于 R − (R − S)。SQLite 直接支持 INTERSECT，翻译时用它。',
+    ],
+    answerAlgebra: {type:'intersect',
+      left:{type:'select',cond:"Sdept='CS'",child:{type:'table',name:'Student'}},
+      right:{type:'select',cond:"Sage>=19",child:{type:'table',name:'Student'}}},
+  },
+  {
+    id:'R4_3', group:'intersect', title:'既选修数据库 又选修数学的学生学号', difficulty:'hard',
+    natural:'查询同时<b>选修过课程"数据库"（Cno=1）</b>和<b>课程"数学"（Cno=2）</b>的学生学号。要求先做单课选修学号集，再求交。',
+    imper:'π<sub>Sno</sub>(σ<sub>Cno="1"</sub>(SC)) <b>∩</b> π<sub>Sno</sub>(σ<sub>Cno="2"</sub>(SC))',
+    hints:[
+      '这题和 R4_1 的形式一样，但强调"投影 + 交"的模式——很多"同时具备两个属性"的问题都能这样解。',
+      '思路：分别求"选了课1的学号集"和"选了课2的学号集"，然后求交。',
+    ],
+    answerAlgebra: {type:'intersect',
+      left:{type:'project',fields:['Sno'],child:{type:'select',cond:"Cno='1'",child:{type:'table',name:'SC'}}},
+      right:{type:'project',fields:['Sno'],child:{type:'select',cond:"Cno='2'",child:{type:'table',name:'SC'}}}},
+  },
+
+  // ===== 差 − (3 题) =====
+  {
+    id:'R5_1', group:'except', title:'选了课 1 但没选课 2 的学生学号', difficulty:'easy',
+    natural:'查询 <b>选修了 1 号课</b> 但 <b>没选过 2 号课</b> 的学生学号。',
+    imper:'π<sub>Sno</sub>(σ<sub>Cno="1"</sub>(SC)) <b>−</b> π<sub>Sno</sub>(σ<sub>Cno="2"</sub>(SC))',
+    hints:[
+      '差运算 R − S：只保留在 R 里但不在 S 里的元组。',
+      '注意顺序不能颠倒：R − S ≠ S − R。本题左边是"选了课1的"，右边是"选了课2的"，减完 = 选1不选2。',
+    ],
+    answerAlgebra: {type:'except',
+      left:{type:'project',fields:['Sno'],child:{type:'select',cond:"Cno='1'",child:{type:'table',name:'SC'}}},
+      right:{type:'project',fields:['Sno'],child:{type:'select',cond:"Cno='2'",child:{type:'table',name:'SC'}}}},
+  },
+  {
+    id:'R5_2', group:'except', title:'所有学生 减去 CS 系学生', difficulty:'medium',
+    natural:'查询 <b>不是 CS 系的所有学生</b>（用差实现，而非直接 σ_{Sdept≠"CS"}）。',
+    imper:'Student <b>−</b> σ<sub>Sdept="CS"</sub>(Student)',
+    hints:[
+      '把全部学生看作全集 U，减去 CS 系子集，就得到非 CS 系学生。',
+      '和 σ_{Sdept &lt;&gt; "CS"}(Student) 结果等价——两种写法都对，但本题要求用差运算训练思路。',
+    ],
+    answerAlgebra: {type:'except',
+      left:{type:'table',name:'Student'},
+      right:{type:'select',cond:"Sdept='CS'",child:{type:'table',name:'Student'}}},
+  },
+  {
+    id:'R5_3', group:'except', title:'没有选修过课 1 的学生学号', difficulty:'hard',
+    natural:'查询 <b>从未选修过 1 号课</b> 的学生学号（哪怕这个学生只选了别的课，也算"没选课1"）。',
+    imper:'π<sub>Sno</sub>(Student) <b>−</b> π<sub>Sno</sub>(σ<sub>Cno="1"</sub>(SC))',
+    hints:[
+      '思路：全体学生学号集 − 选修过课1的学生学号集 = 没选过课1的学生。',
+      '注意左边要用 π_Sno(Student)，不能直接用 Student，因为要和右边（也是 π_Sno 的结果）"相容"（列数、列类型一致）。',
+    ],
+    answerAlgebra: {type:'except',
+      left:{type:'project',fields:['Sno'],child:{type:'table',name:'Student'}},
+      right:{type:'project',fields:['Sno'],child:{type:'select',cond:"Cno='1'",child:{type:'table',name:'SC'}}}},
+  },
+
+  // ===== 笛卡尔积 × (3 题) =====
+  {
+    id:'R6_1', group:'cross', title:'Student × Course 全组合', difficulty:'easy',
+    natural:'把 Student 和 Course 做<b>笛卡尔积</b>，得到 8×6 = 48 行结果。每行都是一个"学生 × 课程"的组合。',
+    imper:'Student <b>×</b> Course',
+    hints:[
+      '直接：先点 [Student]，再点 [×] 按钮，第二操作数选 Course。',
+      '笛卡尔积没有语义过滤——它的意义在于配合 σ 或 ⋈ 后才有用。',
+    ],
+    answerAlgebra: {type:'cross', left:{type:'table',name:'Student'}, right:{type:'table',name:'Course'}},
+  },
+  {
+    id:'R6_2', group:'cross', title:'先筛选再笛卡尔积：CS 系学生 × 4 学分课程', difficulty:'medium',
+    natural:'先<b>过滤 CS 系学生</b>和<b>学分 = 4 的课程</b>，再做笛卡尔积。',
+    imper:'σ<sub>Sdept="CS"</sub>(Student) <b>×</b> σ<sub>Ccredit=4</sub>(Course)',
+    hints:[
+      '先构造 σ_{Sdept="CS"}(Student)，存收藏夹；重置后构造 σ_{Ccredit=4}(Course)；最后 × 取收藏夹里那个。',
+      '或者反过来：先构 σ_{Ccredit=4}(Course) 存收藏夹，再构 σ_{Sdept="CS"}(Student)，然后 × 收藏夹项。',
+    ],
+    answerAlgebra: {type:'cross',
+      left:{type:'select',cond:"Sdept='CS'",child:{type:'table',name:'Student'}},
+      right:{type:'select',cond:"Ccredit=4",child:{type:'table',name:'Course'}}},
+  },
+  {
+    id:'R6_3', group:'cross', title:'笛卡尔积 + 选择 = 手工连接', difficulty:'hard',
+    natural:'手动实现"学生 + 选课"关联：先做 <b>Student × SC 笛卡尔积</b>，再用 σ 过滤 <code>Student.Sno = SC.Sno</code>。<br>—— 这其实就是等值连接的定义式。',
+    imper:'σ<sub>Student.Sno = SC.Sno</sub>(Student × SC)',
+    hints:[
+      '第 1 步：构造 Student × SC，保存到收藏夹。',
+      '第 2 步：清空画布，从收藏夹恢复那个笛卡尔积（点【用】按钮），再点 [σ]。',
+      '第 3 步：σ 的条件写 <code>Student.Sno</code> <code>=</code> <code>SC.Sno</code>。因为 × 后两侧都有 Sno 列，要加表名前缀。',
+      '这题的意义：让学生亲手体会为什么"笛卡尔积 + 选择 = 等值连接"。',
+    ],
+    answerAlgebra: {type:'select', cond:"Student.Sno=SC.Sno",
+      child:{type:'cross', left:{type:'table',name:'Student'}, right:{type:'table',name:'SC'}}},
+  },
+
+  // ===== 连接 ⋈ (3 题) =====
+  {
+    id:'R7_1', group:'join', title:'Student ⋈ SC（自然连接）', difficulty:'easy',
+    natural:'把学生表和选课表按<b>同名列 Sno 自然连接</b>——得到"学生信息 + 他的选课"合并结果。',
+    imper:'Student <b>⋈</b> SC （自然连接，自动按 Sno 匹配）',
+    hints:[
+      '点 [Student]，再点 [⋈] 按钮，第二操作数选 SC，连接类型选"自然连接"。',
+      '自然连接会自动去除重复列——结果里只有一个 Sno 列（不是两个）。',
+    ],
+    answerAlgebra: {type:'join', natural:true, left:{type:'table',name:'Student'}, right:{type:'table',name:'SC'}},
+  },
+  {
+    id:'R7_2', group:'join', title:'三表自然连接：Student ⋈ SC ⋈ Course', difficulty:'medium',
+    natural:'把三张表全部按同名列自然连接，得到"哪个学生选了哪门课得了多少分"的完整信息。',
+    imper:'Student <b>⋈</b> SC <b>⋈</b> Course',
+    hints:[
+      '先构造 Student ⋈ SC，保存到收藏夹；然后清空重新构，或直接从收藏夹恢复。',
+      '也可以：先构 SC ⋈ Course（按 Cno 匹配），再和 Student 连接（按 Sno 匹配）。三种顺序等价。',
+    ],
+    answerAlgebra: {type:'join', natural:true,
+      left:{type:'join', natural:true, left:{type:'table',name:'Student'}, right:{type:'table',name:'SC'}},
+      right:{type:'table',name:'Course'}},
+  },
+  {
+    id:'R7_3', group:'join', title:'θ-连接：找出成绩 ≥ 85 的学生的姓名和课号', difficulty:'hard',
+    natural:'把 Student 和 SC 用<b>等值连接</b>关联（<code>Student.Sno = SC.Sno</code>），再用 σ 过滤 <code>Grade &gt;= 85</code>，最后 π 保留 Sname 和 Cno。',
+    imper:'π<sub>Sname, Cno</sub>(σ<sub>Grade&gt;=85</sub>(Student ⋈<sub>Student.Sno=SC.Sno</sub> SC))',
+    hints:[
+      '⋈ 弹窗里选"条件连接"，条件写 <code>Student.Sno</code> <code>=</code> <code>SC.Sno</code>。',
+      '再套 σ_{Grade&gt;=85}，最后 π_{Sname, Cno}。',
+      '本题也可以用自然连接实现——因为 Student 和 SC 的同名列就是 Sno。',
+    ],
+    answerAlgebra: {type:'project', fields:['Sname','Cno'],
+      child:{type:'select', cond:"Grade>=85",
+        child:{type:'join', cond:"Student.Sno=SC.Sno",
+          left:{type:'table',name:'Student'}, right:{type:'table',name:'SC'}}}},
+  },
+
+  // ===== 除 ÷ (3 题) =====
+  {
+    id:'R8_1', group:'divide', title:'除法入门：选了 1 号课的学生', difficulty:'easy',
+    natural:'用<b>除法</b>找出"选了 1 号课"的学生（作为除法机制的最小演示——被除数是 π_{Sno,Cno}(SC)，除数是只含 1 号课的关系）。',
+    imper:'π<sub>Sno,Cno</sub>(SC) <b>÷</b> π<sub>Cno</sub>(σ<sub>Cno="1"</sub>(Course))',
+    hints:[
+      '除法 R ÷ S：找出 R 中的 A 值，使得 {A} 配上 S 中所有 B 值的组合都出现在 R 里。',
+      '本题除数只有一行 {Cno=1}，所以结果 = 选了 1 号课的学生 Sno。',
+      '构造步骤：① 构 π_{Sno,Cno}(SC)，存收藏夹；② 清空重构 π_{Cno}(σ_{Cno="1"}(Course))；③ 点 [÷]，第二操作数选收藏夹里的第一个表达式（顺序：R 在左，S 在右）。',
+      '<b>注意】</b>除数 S 的属性必须是被除数 R 的属性子集——这里 S 有 Cno，R 有 Sno+Cno，满足。',
+    ],
+    answerAlgebra: {type:'divide',
+      left:{type:'project',fields:['Sno','Cno'],child:{type:'table',name:'SC'}},
+      right:{type:'project',fields:['Cno'],child:{type:'select',cond:"Cno='1'",child:{type:'table',name:'Course'}}}},
+  },
+  {
+    id:'R8_2', group:'divide', title:'除法常规：同时选了课 1 和课 2 的学生', difficulty:'medium',
+    natural:'找出<b>同时选了 1 号课 和 2 号课</b>的学生学号——用除法实现（除数是{1,2}两门课）。',
+    imper:'π<sub>Sno,Cno</sub>(SC) <b>÷</b> π<sub>Cno</sub>(σ<sub>Cno="1" OR Cno="2"</sub>(Course))',
+    hints:[
+      '除数 S = {课1, 课2}，含两行两列——不，两行一列（只有 Cno）。',
+      '除法语义：找出 Sno，使得 (Sno, 1) 和 (Sno, 2) 都在 SC 里。',
+      '和 R4_1 用交实现的结果等价——这就是除法和交在特定场景下的等价性。',
+    ],
+    answerAlgebra: {type:'divide',
+      left:{type:'project',fields:['Sno','Cno'],child:{type:'table',name:'SC'}},
+      right:{type:'project',fields:['Cno'],child:{type:'select',cond:"Cno='1' OR Cno='2'",child:{type:'table',name:'Course'}}}},
+  },
+  {
+    id:'R8_3', group:'divide', title:'★经典：选修了全部课程的学生', difficulty:'hard',
+    natural:'【关系代数除法的经典应用】查询<b>选修了全部课程</b>的学生学号——学生必须选过 Course 表里的<b>每一门课</b>才符合条件。',
+    imper:'π<sub>Sno,Cno</sub>(SC) <b>÷</b> π<sub>Cno</sub>(Course)',
+    hints:[
+      '被除数 R = π_{Sno,Cno}(SC)：所有"学生-课程"配对。',
+      '除数 S = π_{Cno}(Course)：全部课程号（本题共 6 门）。',
+      '结果：某学生 x 出现在结果里 ⟺ (x, 每一门课) 都出现在 R 里 ⟺ 这个学生选了所有课。',
+      '样本数据里，李勇（200215121）选了全部 6 门课，是唯一符合的学生。',
+      '<b>这题是关系代数除法的教科书代表——很多"全部/所有"问句都要用除法。</b>',
+    ],
+    answerAlgebra: {type:'divide',
+      left:{type:'project',fields:['Sno','Cno'],child:{type:'table',name:'SC'}},
+      right:{type:'project',fields:['Cno'],child:{type:'table',name:'Course'}}},
+  },
+];
+
+// ============ 全局状态 ============
+let SQL, db;
+let currentGroup = GROUPS[0].key;
+let progress = JSON.parse(localStorage.getItem('sql-lab-algebra-progress-v1') || '{}');
+let viewedAnswers = new Set(JSON.parse(localStorage.getItem('sql-lab-algebra-viewed-v1') || '[]'));
+
+// 每题独立状态：{ast, favorites, history}
+const qstate = {};
+LESSONS.forEach(L => {
+  qstate[L.id] = { ast: null, favorites: [], history: [] };
+});
+
+// ============ AST 深拷贝 ============
+function cloneAST(node) {
+  if (!node) return null;
+  const c = { type: node.type };
+  if (node.name) c.name = node.name;
+  if (node.cond !== undefined) c.cond = node.cond;
+  if (node.fields) c.fields = node.fields.slice();
+  if (node.natural !== undefined) c.natural = node.natural;
+  if (node.child) c.child = cloneAST(node.child);
+  if (node.left) c.left = cloneAST(node.left);
+  if (node.right) c.right = cloneAST(node.right);
+  return c;
+}
+
+// ============ Schema 推断 ============
+function inferSchema(node) {
+  if (!node) return [];
+  if (node.type === 'table') return TABLE_SCHEMA[node.name] ? TABLE_SCHEMA[node.name].slice() : [];
+  if (node.type === 'select') return inferSchema(node.child);
+  if (node.type === 'project') return node.fields.slice();
+  if (node.type === 'union' || node.type === 'intersect' || node.type === 'except') {
+    return inferSchema(node.left); // 假设左右相容
+  }
+  if (node.type === 'cross') {
+    const l = inferSchema(node.left), r = inferSchema(node.right);
+    return l.concat(r);
+  }
+  if (node.type === 'join') {
+    const l = inferSchema(node.left), r = inferSchema(node.right);
+    if (node.natural) {
+      const common = l.filter(c => r.includes(c));
+      const lOnly = l.filter(c => !common.includes(c));
+      const rOnly = r.filter(c => !common.includes(c));
+      return common.concat(lOnly).concat(rOnly);
+    }
+    return l.concat(r);
+  }
+  if (node.type === 'divide') {
+    const l = inferSchema(node.left), r = inferSchema(node.right);
+    return l.filter(c => !r.includes(c));
+  }
+  return [];
+}
+
+// ============ AST → SQL 翻译 ============
+// 递归找根表名（cross/join 的别名用它，可让外层 select 用 "Student.Sno" 引用）
+function findRootTable(node) {
+  if (!node) return null;
+  if (node.type === 'table') return node.name;
+  if (node.type === 'select' || node.type === 'project') return findRootTable(node.child);
+  return null;
+}
+function fromClauseFor(node, defaultAlias) {
+  const root = findRootTable(node);
+  const alias = root || defaultAlias;
+  return `(${astToSQL(node)}) AS ${alias}`;
+}
+
+function astToSQL(node) {
+  if (!node) throw new Error('表达式为空');
+  if (node.type === 'table') {
+    return `SELECT * FROM ${node.name}`;
+  }
+  if (node.type === 'select') {
+    const cond = node.cond;
+    if (!cond) throw new Error('σ 缺少条件');
+    const inner = astToSQL(node.child);
+    // 关键：如果 child 是 cross/join/table，直接 append WHERE，不再包子查询——
+    // 因为子查询会屏蔽内部的表别名（Student.Sno 引用不到）
+    if (node.child.type === 'table' || node.child.type === 'cross' || node.child.type === 'join') {
+      return inner + ' WHERE ' + cond;
+    }
+    return `SELECT * FROM (${inner}) WHERE ${cond}`;
+  }
+  if (node.type === 'project') {
+    if (!node.fields || !node.fields.length) throw new Error('π 没有选任何列');
+    const inner = astToSQL(node.child);
+    return `SELECT DISTINCT ${node.fields.join(', ')} FROM (${inner})`;
+  }
+  // SQLite 不允许 (SELECT ...) UNION (SELECT ...) 这种带括号形式，改用 SELECT * FROM (...) UNION ...
+  if (node.type === 'union') {
+    return `SELECT * FROM (${astToSQL(node.left)}) UNION SELECT * FROM (${astToSQL(node.right)})`;
+  }
+  if (node.type === 'intersect') {
+    return `SELECT * FROM (${astToSQL(node.left)}) INTERSECT SELECT * FROM (${astToSQL(node.right)})`;
+  }
+  if (node.type === 'except') {
+    return `SELECT * FROM (${astToSQL(node.left)}) EXCEPT SELECT * FROM (${astToSQL(node.right)})`;
+  }
+  if (node.type === 'cross') {
+    const l = fromClauseFor(node.left, '_l');
+    const r = fromClauseFor(node.right, '_r');
+    return `SELECT * FROM ${l} CROSS JOIN ${r}`;
+  }
+  if (node.type === 'join') {
+    const l = fromClauseFor(node.left, '_l');
+    const r = fromClauseFor(node.right, '_r');
+    if (node.natural) {
+      return `SELECT * FROM ${l} NATURAL JOIN ${r}`;
+    }
+    if (!node.cond) throw new Error('⋈ 缺少连接条件');
+    return `SELECT * FROM ${l} JOIN ${r} ON ${node.cond}`;
+  }
+  if (node.type === 'divide') {
+    const leftSQL = astToSQL(node.left);
+    const rightSQL = astToSQL(node.right);
+    const L_cols = inferSchema(node.left);
+    const R_cols = inferSchema(node.right);
+    const A_cols = L_cols.filter(c => !R_cols.includes(c));
+    const B_cols = R_cols.slice();
+    if (!A_cols.length) throw new Error('除法无法推断结果列：R 的属性全是 S 的属性');
+    const aList = A_cols.join(', ');
+    const bAnd = B_cols.map(b => `r2.${b} = s.${b}`).join(' AND ');
+    return `SELECT DISTINCT ${aList} FROM (${leftSQL}) AS r WHERE NOT EXISTS (` +
+           `SELECT 1 FROM (${rightSQL}) AS s WHERE NOT EXISTS (` +
+           `SELECT 1 FROM (${leftSQL}) AS r2 WHERE ${bAnd} AND ${A_cols.map(a => `r2.${a} = r.${a}`).join(' AND ')}` +
+           `))`;
+  }
+  throw new Error('未知运算：' + node.type);
+}
+
+// ============ 初始化 ============
+async function init() {
+  try {
+    SQL = await initSqlJs({ locateFile: f => `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}` });
+    resetDB(true);
+    setStatus('ready', '就绪 · SQLite in-browser');
+    renderNav();
+    renderMain(currentGroup);
+    refreshProgressPanel();
+  } catch (e) {
+    setStatus('error', '加载失败: ' + e.message);
+    console.error(e);
+  }
+}
+
+function setStatus(cls, text) {
+  const el = document.getElementById('status-badge');
+  el.className = cls;
+  el.textContent = text;
+}
+
+function resetDB(silent) {
+  if (db) try { db.close(); } catch(e) {}
+  db = new SQL.Database();
+  db.run(INIT_SQL);
+  if (!silent) alert('数据库已重置为初始数据（Student/Course/SC）。');
+}
+
+// ============ 侧边栏导航 ============
+function renderNav() {
+  const container = document.getElementById('nav-list');
+  let html = '';
+  GROUPS.forEach(g => {
+    const groupPassed = LESSONS.filter(L => L.group === g.key && progress[L.id] === 'passed').length;
+    const groupTotal = LESSONS.filter(L => L.group === g.key).length;
+    html += `<div class="lesson-group ${g.key === currentGroup ? 'active' : ''}" onclick="selectGroup('${g.key}')">
+      <span>${g.symbol}</span>
+      <span>${g.title}</span>
+      <span style="margin-left:auto;font-size:11px;color:#8b949e;font-weight:400;">${groupPassed}/${groupTotal}</span>
+    </div>`;
+    if (g.key === currentGroup) {
+      LESSONS.filter(L => L.group === g.key).forEach(L => {
+        const state = progress[L.id] || 'none';
+        html += `<div class="lesson-item ${state}" onclick="scrollToQu('${L.id}')">
+          <span class="lesson-num">${L.id}</span>
+          <span class="title-text">${escapeHtml(L.title)}</span>
+          <span class="status-dot"></span>
+        </div>`;
+      });
+    }
+  });
+  container.innerHTML = html;
+}
+
+function selectGroup(key) {
+  currentGroup = key;
+  renderNav();
+  renderMain(key);
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function scrollToQu(id) {
+  const el = document.getElementById('qu-' + id);
+  if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+
+// ============ 主区渲染 ============
+function renderMain(groupKey) {
+  const g = GROUPS.find(x => x.key === groupKey);
+  const lessons = LESSONS.filter(L => L.group === groupKey);
+  const main = document.getElementById('main-content');
+
+  const cheatMap = {
+    'select':    '<b>σ_条件(R)</b>：从关系 R 中挑出满足条件的行。条件可以用 <code>= != &gt; &lt; &gt;= &lt;= AND OR</code>。',
+    'project':   '<b>π_列名列表(R)</b>：只保留指定的列，结果自动去重。',
+    'union':     '<b>R ∪ S</b>：R 和 S 并集，要求两者的属性列表一致（相容）。',
+    'intersect': '<b>R ∩ S</b>：R 和 S 交集，要求两者相容。等价于 R − (R − S)。',
+    'except':    '<b>R − S</b>：属于 R 但不属于 S 的元组。差运算<b>不满足交换律</b>。',
+    'cross':     '<b>R × S</b>：R 的每一行与 S 的每一行两两拼接，结果列数 = 两边列数之和。',
+    'join':      '<b>R ⋈ S</b>：连接 = 笛卡尔积 + 选择。自然连接会自动按同名列匹配、去除重复列。',
+    'divide':    '<b>R ÷ S</b>：找出 R 中的 A 值，使 {A} × S ⊆ R。用双重 NOT EXISTS 翻译成 SQL。',
+  };
+
+  let html = `
+    <div class="group-header">
+      <h1>${g.symbol} ${g.title}</h1>
+      <div class="subtitle">${g.subtitle}</div>
+      <div class="cheat">${cheatMap[g.key] || ''}</div>
+    </div>
+    ${renderDBPreview(['Student','Course','SC'])}
+  `;
+
+  lessons.forEach(L => {
+    html += renderQu(L);
+  });
+
+  main.innerHTML = html;
+
+  // 渲染每题的构建器初始状态
+  lessons.forEach(L => refreshBuilder(L.id));
+}
+
+// ============ DB 预览 ============
+function renderDBPreview(tables) {
+  const tabs = tables.map((t, i) =>
+    `<div class="tab ${i === 0 ? 'active' : ''}" onclick="switchDBTab('${t}', this)">${t}</div>`
+  ).join('');
+  return `
+    <div class="db-preview">
+      <div class="db-preview-header">
+        <span>📊 数据表预览（本页涉及的 3 张表，共 <span id="db-total-tip">8 学生 / 6 课程 / 22 选课</span>）</span>
+        <div class="tabs">${tabs}</div>
+      </div>
+      <div class="db-preview-body" id="db-preview-body">${renderTablePreview(tables[0])}</div>
+    </div>
+  `;
+}
+
+function switchDBTab(t, el) {
+  el.parentNode.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('db-preview-body').innerHTML = renderTablePreview(t);
+}
+
+function renderTablePreview(t) {
+  try {
+    const res = db.exec(`SELECT * FROM ${t}`);
+    if (!res.length) return '<div style="padding:20px;color:#8b949e">（空表）</div>';
+    const { columns, values } = res[0];
+    let html = '<table><thead><tr>';
+    columns.forEach(c => { html += `<th>${escapeHtml(c)}</th>`; });
+    html += '</tr></thead><tbody>';
+    values.forEach(row => {
+      html += '<tr>';
+      row.forEach(v => {
+        const isNum = typeof v === 'number';
+        const cls = isNum ? ' class="r"' : '';
+        html += `<td${cls}>${v === null ? '<i style="color:#8b949e">NULL</i>' : escapeHtml(String(v))}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    html += `<div style="padding:6px 12px;color:#8b949e;font-size:11px;">共 ${values.length} 行</div>`;
+    return html;
+  } catch (e) {
+    return `<div style="padding:20px;color:#cf222e">读取失败: ${e.message}</div>`;
+  }
+}
+
+// ============ 题目卡片渲染 ============
+function renderQu(L) {
+  const state = progress[L.id] || 'none';
+  const stateIcon = state === 'passed' ? '✅' : (state === 'attempted' ? '🟠' : '');
+  const dLabel = difficultyLabel(L.difficulty);
+  return `
+    <div class="qu" id="qu-${L.id}">
+      <h2>
+        <span class="qid">${L.id}</span>
+        <span>${escapeHtml(L.title)}</span>
+        <span class="badge ${L.difficulty}">${dLabel}</span>
+        <span style="margin-left:auto;font-size:14px" id="state-icon-${L.id}">${stateIcon}</span>
+      </h2>
+      <div class="imper">🎯 ${L.natural}</div>
+
+      ${renderBuilder(L.id)}
+
+      <div class="feedback" id="feedback-${L.id}"></div>
+      <div class="result-box" id="result-${L.id}">
+        <div class="result-header">
+          <span id="result-title-${L.id}">运行结果</span>
+          <span id="result-meta-${L.id}"></span>
+        </div>
+        <div class="result-body" id="result-body-${L.id}"></div>
+      </div>
+
+      ${renderHints(L)}
+      ${renderAnsBlock(L)}
+    </div>
+  `;
+}
+
+function renderHints(L) {
+  const hintsArr = L.hints || [L.hint || '独立思考一下~'];
+  if (hintsArr.length === 1) {
+    return `<details class="hint-block"><summary>💡 提示</summary><div>${hintsArr[0]}</div></details>`;
+  }
+  const items = hintsArr.map((h, i) =>
+    `<div class="hint-item" id="hint-item-${L.id}-${i}"${i > 0 ? ' style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #ffdfb5"' : ''}><b>提示 ${i + 1}：</b>${h}</div>`
+  ).join('');
+  return `<details class="hint-block">
+    <summary>💡 分级提示 · <span id="hint-shown-${L.id}">1</span>/${hintsArr.length}</summary>
+    <div>
+      ${items}
+      <button id="hint-more-${L.id}" onclick="showNextHint('${L.id}', ${hintsArr.length})" style="margin-top:10px; font-size:12px; padding:4px 10px; background:#fff; border:1px solid #ffdfb5; color:#953800; border-radius:4px; cursor:pointer;">👇 继续查看下一条提示</button>
+    </div>
+  </details>`;
+}
+
+function renderAnsBlock(L) {
+  const alg = renderAST(L.answerAlgebra);
+  let sqlStr = '';
+  try { sqlStr = astToSQL(L.answerAlgebra); } catch(e) { sqlStr = '(生成失败: ' + e.message + ')'; }
+  return `
+    <details class="ans-block">
+      <summary>👀 参考答案</summary>
+      <div>
+        <div id="ans-warn-${L.id}" style="padding:4px 0;">
+          <div style="color:#57606a; font-size:12px; margin-bottom:6px;">⚠️ 看答案后就不算你独立完成了哦～建议先按提示多试几次</div>
+          <button onclick="revealAnswer('${L.id}')" style="font-size:12px; padding:4px 12px; background:#0969da; color:white; border:none; border-radius:4px; cursor:pointer;">我已知晓，展示答案</button>
+        </div>
+        <div id="ans-detail-${L.id}" style="display:none">
+          <div style="font-size:12px;color:#57606a;margin:6px 0 2px">关系代数表达式：</div>
+          <div class="ans-expr">${alg}</div>
+          <div style="font-size:12px;color:#57606a;margin:6px 0 2px">翻译为 SQL：</div>
+          <pre>${escapeHtml(sqlStr)}</pre>
+        </div>
+      </div>
+    </details>
+  `;
+}
+
+function difficultyLabel(d) {
+  return { easy: '入门', medium: '常规', hard: '进阶' }[d] || d;
+}
+
+// ============ 构建器渲染 ============
+function renderBuilder(qid) {
+  return `
+    <div class="builder" id="builder-${qid}">
+      <div class="builder-section">
+        <div class="builder-section-title">🧱 运算符工具栏 <span class="hint-txt">（一元/二元运算，先构建叶子再套外层）</span></div>
+        <div class="op-toolbar">
+          <span class="op-label">基础表</span>
+          <button class="op-btn table-btn" onclick="pickTable('${qid}','Student')">Student</button>
+          <button class="op-btn table-btn" onclick="pickTable('${qid}','Course')">Course</button>
+          <button class="op-btn table-btn" onclick="pickTable('${qid}','SC')">SC</button>
+          <span style="width:12px"></span>
+          <span class="op-label">一元</span>
+          <button class="op-btn" id="op-select-${qid}" onclick="openOpModal('${qid}','select')" title="选择 σ：加条件过滤行">σ<span class="op-name">选择</span></button>
+          <button class="op-btn" id="op-project-${qid}" onclick="openOpModal('${qid}','project')" title="投影 π：挑列">π<span class="op-name">投影</span></button>
+          <span style="width:12px"></span>
+          <span class="op-label">二元</span>
+          <button class="op-btn" id="op-union-${qid}" onclick="openOpModal('${qid}','union')" title="并 ∪">∪<span class="op-name">并</span></button>
+          <button class="op-btn" id="op-intersect-${qid}" onclick="openOpModal('${qid}','intersect')" title="交 ∩">∩<span class="op-name">交</span></button>
+          <button class="op-btn" id="op-except-${qid}" onclick="openOpModal('${qid}','except')" title="差 −">−<span class="op-name">差</span></button>
+          <button class="op-btn" id="op-cross-${qid}" onclick="openOpModal('${qid}','cross')" title="笛卡尔积 ×">×<span class="op-name">笛卡尔</span></button>
+          <button class="op-btn" id="op-join-${qid}" onclick="openOpModal('${qid}','join')" title="连接 ⋈">⋈<span class="op-name">连接</span></button>
+          <button class="op-btn" id="op-divide-${qid}" onclick="openOpModal('${qid}','divide')" title="除 ÷">÷<span class="op-name">除</span></button>
+        </div>
+      </div>
+
+      <div class="builder-section">
+        <div class="builder-section-title">🎨 当前表达式 <span class="hint-txt">（AST 可视化）</span></div>
+        <div class="ast-canvas" id="ast-${qid}">点击一个基础表按钮开始构建（Student / Course / SC）</div>
+      </div>
+
+      <div class="builder-section">
+        <div class="builder-section-title">💾 表达式收藏夹 <span class="hint-txt">（用于二元运算的第二操作数）</span></div>
+        <div class="favorites" id="fav-${qid}"><div class="fav-empty">（尚未保存任何子表达式）</div></div>
+      </div>
+
+      <div class="builder-section">
+        <div class="builder-actions">
+          <button onclick="undoBuilder('${qid}')">↶ 撤销</button>
+          <button onclick="resetBuilder('${qid}')">↺ 重置画布</button>
+          <button onclick="saveFavorite('${qid}')">💾 保存到收藏夹</button>
+          <button class="ghost" onclick="toggleSQLPreview('${qid}')" id="btn-sql-${qid}">👁 查看生成的 SQL</button>
+          <span style="flex:1"></span>
+          <button class="blue" onclick="runBuilder('${qid}')">▶ 运行</button>
+          <button class="primary" onclick="checkBuilder('${qid}')">✓ 提交对答案</button>
+        </div>
+        <div class="sql-preview" id="sql-preview-${qid}"></div>
+      </div>
+    </div>
+  `;
+}
+
+function refreshBuilder(qid) {
+  const st = qstate[qid];
+  const canvas = document.getElementById('ast-' + qid);
+  if (!canvas) return;
+  if (!st.ast) {
+    canvas.className = 'ast-canvas empty';
+    canvas.innerHTML = '点击一个基础表按钮开始构建（Student / Course / SC）';
+  } else {
+    canvas.className = 'ast-canvas';
+    canvas.innerHTML = renderAST(st.ast);
+  }
+  // favorites
+  const favBox = document.getElementById('fav-' + qid);
+  if (st.favorites.length === 0) {
+    favBox.innerHTML = '<div class="fav-empty">（尚未保存任何子表达式）</div>';
+  } else {
+    favBox.innerHTML = st.favorites.map((f, i) =>
+      `<div class="fav-item">
+        <span class="fav-name">F${i+1}</span>
+        <span class="fav-expr">${renderAST(f.ast)}</span>
+        <button onclick="loadFavorite('${qid}',${i})" title="把该收藏项恢复到画布">用</button>
+        <button class="danger" onclick="deleteFavorite('${qid}',${i})" title="删除该收藏">×</button>
+      </div>`
+    ).join('');
+  }
+  // 一元/二元按钮的可用性：无 AST 时全禁用（除表按钮）
+  ['select','project','union','intersect','except','cross','join','divide'].forEach(op => {
+    const btn = document.getElementById(`op-${op}-${qid}`);
+    if (btn) btn.disabled = !st.ast;
+  });
+  // 清 SQL 预览
+  const sqlBox = document.getElementById('sql-preview-' + qid);
+  if (sqlBox && sqlBox.classList.contains('show')) refreshSQLPreview(qid);
+}
+
+// ============ AST 可视化渲染 ============
+function renderAST(node) {
+  if (!node) return '<em style="color:#8b949e">（空）</em>';
+  const wrap = (child, parentPriority, childPriority) => {
+    const s = renderAST(child);
+    return (childPriority < parentPriority) ? `(${s})` : s;
+  };
+  const P = { table: 100, select: 90, project: 90, cross: 60, join: 60, divide: 55, intersect: 50, union: 40, except: 40 };
+  switch (node.type) {
+    case 'table':
+      return `<span class="ast-table">${escapeHtml(node.name)}</span>`;
+    case 'select': {
+      const c = wrap(node.child, P.select, P[node.child.type] || 100);
+      return `<span class="ast-op">σ</span><sub>${escapeHtml(node.cond)}</sub>(${renderAST(node.child)})`;
+    }
+    case 'project': {
+      return `<span class="ast-op">π</span><sub>${escapeHtml(node.fields.join(','))}</sub>(${renderAST(node.child)})`;
+    }
+    case 'union':
+      return `(${renderAST(node.left)}) <span class="ast-op">∪</span> (${renderAST(node.right)})`;
+    case 'intersect':
+      return `(${renderAST(node.left)}) <span class="ast-op">∩</span> (${renderAST(node.right)})`;
+    case 'except':
+      return `(${renderAST(node.left)}) <span class="ast-op">−</span> (${renderAST(node.right)})`;
+    case 'cross':
+      return `(${renderAST(node.left)}) <span class="ast-op">×</span> (${renderAST(node.right)})`;
+    case 'join':
+      if (node.natural) return `(${renderAST(node.left)}) <span class="ast-op">⋈</span> (${renderAST(node.right)})`;
+      return `(${renderAST(node.left)}) <span class="ast-op">⋈</span><sub>${escapeHtml(node.cond)}</sub> (${renderAST(node.right)})`;
+    case 'divide':
+      return `(${renderAST(node.left)}) <span class="ast-op">÷</span> (${renderAST(node.right)})`;
+    default:
+      return '<em style="color:#cf222e">未知节点</em>';
+  }
+}
+
+// ============ 构建器操作 ============
+function pushHistory(qid) {
+  const st = qstate[qid];
+  st.history.push(cloneAST(st.ast));
+  if (st.history.length > 30) st.history.shift();
+}
+
+function pickTable(qid, name) {
+  const st = qstate[qid];
+  pushHistory(qid);
+  st.ast = { type:'table', name: name };
+  refreshBuilder(qid);
+}
+
+function undoBuilder(qid) {
+  const st = qstate[qid];
+  if (!st.history.length) {
+    st.ast = null;
+    refreshBuilder(qid);
+    return;
+  }
+  st.ast = st.history.pop();
+  refreshBuilder(qid);
+}
+
+function resetBuilder(qid) {
+  const st = qstate[qid];
+  pushHistory(qid);
+  st.ast = null;
+  refreshBuilder(qid);
+  const box = document.getElementById('result-' + qid);
+  if (box) box.classList.remove('show');
+  hideFeedback(qid);
+}
+
+function saveFavorite(qid) {
+  const st = qstate[qid];
+  if (!st.ast) { showFeedback(qid, 'info', '💡 画布为空，无法保存。请先构建一个表达式。'); return; }
+  st.favorites.push({ ast: cloneAST(st.ast) });
+  showFeedback(qid, 'info', `✅ 已保存到收藏夹 F${st.favorites.length}。点【↺ 重置画布】可开始构建新表达式。`);
+  refreshBuilder(qid);
+}
+
+function loadFavorite(qid, idx) {
+  const st = qstate[qid];
+  pushHistory(qid);
+  st.ast = cloneAST(st.favorites[idx].ast);
+  refreshBuilder(qid);
+}
+
+function deleteFavorite(qid, idx) {
+  qstate[qid].favorites.splice(idx, 1);
+  refreshBuilder(qid);
+}
+
+function toggleSQLPreview(qid) {
+  const box = document.getElementById('sql-preview-' + qid);
+  const btn = document.getElementById('btn-sql-' + qid);
+  if (box.classList.contains('show')) {
+    box.classList.remove('show');
+    btn.textContent = '👁 查看生成的 SQL';
+  } else {
+    refreshSQLPreview(qid);
+    box.classList.add('show');
+    btn.textContent = '🙈 收起 SQL';
+  }
+}
+
+function refreshSQLPreview(qid) {
+  const box = document.getElementById('sql-preview-' + qid);
+  const st = qstate[qid];
+  if (!st.ast) { box.innerHTML = '<em>（画布为空）</em>'; return; }
+  try {
+    const sql = astToSQL(st.ast);
+    box.innerHTML = highlightSQL(sql);
+  } catch (e) {
+    box.innerHTML = '<span style="color:#cf222e">生成失败：' + escapeHtml(e.message) + '</span>';
+  }
+}
+
+function highlightSQL(sql) {
+  const kw = ['SELECT','DISTINCT','FROM','WHERE','AS','UNION','INTERSECT','EXCEPT','CROSS','NATURAL','JOIN','ON','NOT','EXISTS','AND','OR'];
+  let s = escapeHtml(sql);
+  kw.forEach(k => {
+    const re = new RegExp('\\b' + k + '\\b', 'g');
+    s = s.replace(re, '<span class="sql-kw">' + k + '</span>');
+  });
+  return s;
+}
+
+
+// ============ 运算符配置弹窗 ============
+let currentModalQid = null;
+let currentModalOp = null;
+
+function openOpModal(qid, op) {
+  const st = qstate[qid];
+  if (!st.ast) { showFeedback(qid, 'info', '💡 请先点一个基础表按钮，把它作为当前表达式。'); return; }
+  currentModalQid = qid;
+  currentModalOp = op;
+  const modal = document.getElementById('op-modal');
+  const title = document.getElementById('op-modal-title');
+  const desc = document.getElementById('op-modal-desc');
+  const body = document.getElementById('op-modal-body');
+  const confirmBtn = document.getElementById('op-modal-confirm');
+  const cancelBtn = document.getElementById('op-modal-cancel');
+
+  const opInfo = {
+    'select':    {sym:'σ', name:'选择', desc:'在当前表达式外层套一层选择运算 σ，用条件表达式过滤行。'},
+    'project':   {sym:'π', name:'投影', desc:'在当前表达式外层套一层投影 π，只保留勾选的属性（列）。'},
+    'union':     {sym:'∪', name:'并',   desc:'将当前表达式与第二操作数求并集（要求两者属性列表相容）。'},
+    'intersect': {sym:'∩', name:'交',   desc:'将当前表达式与第二操作数求交集（要求两者属性列表相容）。'},
+    'except':    {sym:'−', name:'差',   desc:'从当前表达式中减去第二操作数中的元组（左边是被减，右边是减去项）。'},
+    'cross':     {sym:'×', name:'笛卡尔积', desc:'当前表达式与第二操作数做笛卡尔积，两两拼接元组。'},
+    'join':      {sym:'⋈', name:'连接', desc:'当前表达式与第二操作数做连接。可选自然连接或指定条件的 θ-连接。'},
+    'divide':    {sym:'÷', name:'除',   desc:'当前表达式 ÷ 第二操作数。R 的属性必须严格包含 S 的属性（差集 = 结果列）。'},
+  };
+  const info = opInfo[op];
+  title.textContent = `配置运算符 ${info.sym}（${info.name}）`;
+  desc.innerHTML = info.desc;
+
+  // 根据 op 渲染 body
+  if (op === 'select') {
+    body.innerHTML = renderSelectModal(qid);
+    bindCondRowEvents();
+  } else if (op === 'project') {
+    body.innerHTML = renderProjectModal(qid);
+  } else if (op === 'join') {
+    body.innerHTML = renderJoinModal(qid);
+    bindJoinModalEvents();
+  } else {
+    body.innerHTML = renderBinaryModal(qid, op);
+  }
+
+  modal.classList.remove('hidden');
+
+  const doConfirm = () => {
+    try {
+      applyOpModal(qid, op);
+      modal.classList.add('hidden');
+    } catch(e) {
+      alert('❌ ' + e.message);
+    }
+  };
+  confirmBtn.onclick = doConfirm;
+  cancelBtn.onclick = () => modal.classList.add('hidden');
+}
+
+// ---- σ 弹窗 ----
+function renderSelectModal(qid) {
+  const st = qstate[qid];
+  const cols = inferSchema(st.ast);
+  const colOpts = cols.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  const ops = ['=','!=','&gt;','&lt;','&gt;=','&lt;=','LIKE'];
+  const opOpts = ops.map(o => `<option value="${o.replace('&gt;','>').replace('&lt;','<')}">${o}</option>`).join('');
+  return `
+    <div style="font-size:12px;color:#57606a;margin-bottom:8px">当前表达式的属性列表：<code>${cols.join(', ')}</code></div>
+    <div id="cond-list">
+      <div class="cond-row" data-idx="0">
+        <select class="cond-field">${colOpts}</select>
+        <select class="cond-op">${opOpts}</select>
+        <input class="cond-val" placeholder="值（字符串不用加引号，如 CS / 男 / 19）" />
+      </div>
+    </div>
+    <div class="cond-add">
+      <button type="button" onclick="addCondRow('and')" title="与前一条件用 AND 连接">+ 加一行 AND</button>
+      <button type="button" onclick="addCondRow('or')" title="与前一条件用 OR 连接">+ 加一行 OR</button>
+    </div>
+    <div style="font-size:11px;color:#8b949e;margin-top:8px">💡 数字直接填 <code>19</code>；字符串填 <code>CS</code>（系统会自动加引号）。多行时，OR 段会自动加括号保证优先级。</div>
+  `;
+}
+
+function addCondRow(connector) {
+  const list = document.getElementById('cond-list');
+  const cols = inferSchema(qstate[currentModalQid].ast);
+  const colOpts = cols.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  const ops = ['=','!=','>','<','>=','<=','LIKE'];
+  const opOpts = ops.map(o => `<option value="${o}">${o}</option>`).join('');
+  const idx = list.children.length;
+  const row = document.createElement('div');
+  row.className = 'cond-row';
+  row.dataset.idx = idx;
+  row.dataset.connector = connector;
+  row.innerHTML = `
+    <span class="connector">${connector.toUpperCase()}</span>
+    <select class="cond-field">${colOpts}</select>
+    <select class="cond-op">${opOpts}</select>
+    <input class="cond-val" placeholder="值" />
+    <button class="del-cond" type="button" onclick="this.parentNode.remove()">删</button>
+  `;
+  list.appendChild(row);
+}
+
+function bindCondRowEvents() { /* placeholder */ }
+
+// 组装 σ 条件字符串。规则：
+// - 数值型（纯数字）不加引号；否则加单引号
+// - 多行按 connector 拼接，OR 段自动括号
+function buildCondString() {
+  const rows = document.querySelectorAll('#cond-list .cond-row');
+  const parts = [];
+  rows.forEach(r => {
+    const field = r.querySelector('.cond-field').value;
+    const op = r.querySelector('.cond-op').value;
+    let val = r.querySelector('.cond-val').value.trim();
+    if (val === '') throw new Error('存在空的值');
+    // 判断是不是数字（含负数、小数）
+    const isNum = /^-?\d+(\.\d+)?$/.test(val);
+    // LIKE 需要引号
+    if (!isNum) val = "'" + val.replace(/'/g, "''") + "'";
+    const conn = r.dataset.connector || '';
+    parts.push({conn: conn, expr: `${field}${op}${val}`});
+  });
+  if (!parts.length) throw new Error('至少填一个条件');
+  // 组装：把连续的 OR 分段用括号包起来
+  // 简单策略：如果有 AND 也有 OR，OR 段外加括号
+  // 更简单的做法：按 [第一段] connector [第二段] ... 逐段拼，若某段 conn 是 OR 而前后有 AND，则前后加括号
+  // 这里采用：优先级 OR < AND。分组：把连续 OR 的一组合并成 (...) 段
+  const groups = [];
+  let curOrGroup = [parts[0].expr];
+  let curConn = null;
+  for (let i = 1; i < parts.length; i++) {
+    const p = parts[i];
+    if (p.conn === 'or') {
+      curOrGroup.push(p.expr);
+    } else {
+      // 遇到 AND：把当前 OR 组封闭
+      if (curOrGroup.length > 1) groups.push({expr: '(' + curOrGroup.join(' OR ') + ')', hasOr:true});
+      else groups.push({expr: curOrGroup[0]});
+      curOrGroup = [p.expr];
+      curConn = 'AND';
+    }
+  }
+  // 收尾
+  if (curOrGroup.length > 1) groups.push({expr: '(' + curOrGroup.join(' OR ') + ')', hasOr:true});
+  else groups.push({expr: curOrGroup[0]});
+  // 若只有一段，且它是单个（无 OR），去掉外层多余的括号可读性
+  return groups.map(g => g.expr).join(' AND ');
+}
+
+// ---- π 弹窗 ----
+function renderProjectModal(qid) {
+  const st = qstate[qid];
+  const cols = inferSchema(st.ast);
+  const items = cols.map(c => `
+    <label data-field="${escapeHtml(c)}" onclick="toggleFieldSel(this,'${escapeHtml(c)}')">
+      <span>${escapeHtml(c)}</span>
+      <span class="order-num" style="display:none">0</span>
+    </label>
+  `).join('');
+  return `
+    <div style="font-size:12px;color:#57606a;margin-bottom:8px">勾选要保留的属性（勾选顺序决定输出列的顺序）：</div>
+    <div class="field-checkboxes" id="proj-fields">${items}</div>
+    <div style="font-size:11px;color:#8b949e">💡 关系代数投影会自动去重（翻译时会在 SQL 里加 <code>DISTINCT</code>）。</div>
+  `;
+}
+
+// 处理勾选顺序
+function toggleFieldSel(label, field) {
+  const container = label.parentNode;
+  // 是否已选中？
+  if (label.classList.contains('selected')) {
+    label.classList.remove('selected');
+    label.querySelector('.order-num').style.display = 'none';
+    // 重编号
+    container.querySelectorAll('label.selected').forEach((el, i) => {
+      el.querySelector('.order-num').textContent = i + 1;
+    });
+  } else {
+    label.classList.add('selected');
+    const count = container.querySelectorAll('label.selected').length;
+    const num = label.querySelector('.order-num');
+    num.style.display = '';
+    num.textContent = count;
+  }
+}
+
+function getProjectFields() {
+  const container = document.getElementById('proj-fields');
+  // 按 order-num 排序
+  const labels = Array.from(container.querySelectorAll('label.selected'));
+  labels.sort((a,b) => {
+    const ao = parseInt(a.querySelector('.order-num').textContent);
+    const bo = parseInt(b.querySelector('.order-num').textContent);
+    return ao - bo;
+  });
+  return labels.map(l => l.dataset.field);
+}
+
+// 二元运算：单选式操作数选择器
+function selectOperand(label) {
+  const picker = label.closest('.operand-picker');
+  if (!picker) return;
+  picker.querySelectorAll('label.picker-opt.selected').forEach(l => l.classList.remove('selected'));
+  label.classList.add('selected');
+}
+
+// ---- 二元运算通用弹窗（∪ ∩ − × ÷） ----
+function renderBinaryModal(qid, op) {
+  const st = qstate[qid];
+  // 基础表列表
+  const tblOpts = Object.keys(TABLE_SCHEMA).map(t => `
+    <label class="picker-opt" data-value="table:${t}" onclick="selectOperand(this)">
+      <span>${t}</span>
+    </label>
+  `).join('');
+  // 收藏夹列表
+  const favOpts = st.favorites.map((f, i) => `
+    <label class="picker-opt" data-value="fav:${i}" onclick="selectOperand(this)">
+      <span>F${i+1}:</span>
+      <span class="picker-opt-expr">${renderAST(f.ast)}</span>
+    </label>
+  `).join('');
+  const favHtml = st.favorites.length
+    ? `<div class="picker-group"><div class="picker-group-title">收藏夹（子表达式）</div><div class="picker-options">${favOpts}</div></div>`
+    : `<div class="picker-group"><div class="picker-group-title">收藏夹（子表达式）</div><div style="color:#8b949e;font-size:12px;">（尚无收藏项）复杂表达式请先在画布上构建，然后【💾 保存到收藏夹】。</div></div>`;
+  let extra = '';
+  if (op === 'divide') {
+    const R_cols = inferSchema(st.ast);
+    extra = `<div style="font-size:12px;color:#7d4e00;background:#fff8f0;padding:8px;border-radius:6px;margin-top:10px">
+      <b>💡 除法提示</b><br>
+      当前左操作数（R）的属性 = <code>${R_cols.join(', ')}</code><br>
+      第二操作数（S）的属性必须是 R 的<b>严格子集</b>；结果列 = R 的属性 − S 的属性。
+    </div>`;
+  }
+  return `
+    <div style="font-size:12px;color:#57606a;margin-bottom:8px">请选择第二个操作数：</div>
+    <div class="operand-picker">
+      <div class="picker-group">
+        <div class="picker-group-title">基础表</div>
+        <div class="picker-options">${tblOpts}</div>
+      </div>
+      ${favHtml}
+    </div>
+    ${extra}
+  `;
+}
+
+// ---- ⋈ 弹窗（连接类型 + 条件） ----
+function renderJoinModal(qid) {
+  const binary = renderBinaryModal(qid, 'join');
+  return `
+    ${binary}
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #eaecef;">
+      <div style="font-size:12px;color:#57606a;margin-bottom:8px">连接类型：</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <label style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#f6f8fa;border:1px solid #d0d7de;border-radius:6px;cursor:pointer">
+          <input type="radio" name="join-type" value="natural" checked onchange="toggleJoinCond()"> 自然连接（按同名列自动匹配）
+        </label>
+        <label style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#f6f8fa;border:1px solid #d0d7de;border-radius:6px;cursor:pointer">
+          <input type="radio" name="join-type" value="theta" onchange="toggleJoinCond()"> θ-连接（手工写条件）
+        </label>
+      </div>
+      <div id="join-cond-wrap" style="display:none">
+        <div style="font-size:12px;color:#57606a;margin-bottom:6px">连接条件（多个可用 AND 连接，例如 <code>Student.Sno=SC.Sno</code>）：</div>
+        <input id="join-cond-input" style="width:100%" placeholder="Student.Sno=SC.Sno" />
+      </div>
+    </div>
+  `;
+}
+
+function toggleJoinCond() {
+  const t = document.querySelector('input[name=join-type]:checked').value;
+  document.getElementById('join-cond-wrap').style.display = (t === 'theta' ? '' : 'none');
+}
+function bindJoinModalEvents() { /* placeholder */ }
+
+// ---- 应用弹窗结果到 AST ----
+function applyOpModal(qid, op) {
+  const st = qstate[qid];
+  pushHistory(qid);
+  if (op === 'select') {
+    const cond = buildCondString();
+    st.ast = { type:'select', cond: cond, child: cloneAST(st.ast) };
+  } else if (op === 'project') {
+    const fields = getProjectFields();
+    if (!fields.length) throw new Error('请至少选择一个属性');
+    st.ast = { type:'project', fields: fields, child: cloneAST(st.ast) };
+  } else {
+    // 二元
+    const sel = document.querySelector('#op-modal-body .operand-picker label.picker-opt.selected');
+    if (!sel) throw new Error('请选择第二操作数');
+    const val = sel.dataset.value;
+    let right;
+    if (val.startsWith('table:')) {
+      right = { type:'table', name: val.slice(6) };
+    } else {
+      const idx = parseInt(val.slice(4));
+      right = cloneAST(st.favorites[idx].ast);
+    }
+    if (op === 'join') {
+      const t = document.querySelector('input[name=join-type]:checked').value;
+      if (t === 'natural') {
+        st.ast = { type:'join', natural:true, left: cloneAST(st.ast), right: right };
+      } else {
+        const cond = document.getElementById('join-cond-input').value.trim();
+        if (!cond) throw new Error('θ-连接必须填连接条件');
+        st.ast = { type:'join', cond: cond, left: cloneAST(st.ast), right: right };
+      }
+    } else if (op === 'divide') {
+      // 校验：S 属性 ⊆ R 属性 且 R − S 非空
+      const L_cols = inferSchema(st.ast);
+      const R_cols = inferSchema(right);
+      const notIn = R_cols.filter(c => !L_cols.includes(c));
+      if (notIn.length) throw new Error('除数 S 的属性 [' + notIn.join(',') + '] 不在被除数 R 的属性中，除法无法进行');
+      const rest = L_cols.filter(c => !R_cols.includes(c));
+      if (!rest.length) throw new Error('除数 S 的属性完全覆盖了 R，除法结果没有列');
+      st.ast = { type:'divide', left: cloneAST(st.ast), right: right };
+    } else {
+      // union, intersect, except, cross
+      if (op === 'union' || op === 'intersect' || op === 'except') {
+        const L_cols = inferSchema(st.ast);
+        const R_cols = inferSchema(right);
+        if (L_cols.length !== R_cols.length) {
+          throw new Error(`两个操作数属性数量不同（${L_cols.length} vs ${R_cols.length}），无法进行 ${op} 运算`);
+        }
+      }
+      st.ast = { type: op, left: cloneAST(st.ast), right: right };
+    }
+  }
+  refreshBuilder(qid);
+}
+
+// ============ 运行 / 对答 ============
+function runBuilder(qid) {
+  const st = qstate[qid];
+  if (!st.ast) { showFeedback(qid, 'fail', '❌ 表达式为空。请先构建。'); return; }
+  hideFeedback(qid);
+  let sql;
+  try { sql = astToSQL(st.ast); }
+  catch(e) { showFeedback(qid, 'fail', '❌ 表达式生成 SQL 失败：' + escapeHtml(e.message)); return; }
+
+  const box = document.getElementById('result-' + qid);
+  const body = document.getElementById('result-body-' + qid);
+  const title = document.getElementById('result-title-' + qid);
+  const meta = document.getElementById('result-meta-' + qid);
+  box.classList.add('show');
+
+  try {
+    const t0 = performance.now();
+    const res = db.exec(sql);
+    const dt = (performance.now() - t0).toFixed(1);
+    title.textContent = '✓ 运行成功';
+    if (!res.length) {
+      body.innerHTML = '<div style="padding:16px;color:#6e7781;text-align:center;font-size:13px">✓ 执行成功，无返回结果</div>';
+      meta.textContent = `${dt}ms`;
+    } else {
+      body.innerHTML = renderResultTable(res[0].columns, res[0].values);
+      meta.textContent = `${res[0].values.length} 行 · ${dt}ms`;
+    }
+    // 标为尝试过
+    if (progress[qid] !== 'passed') {
+      progress[qid] = 'attempted';
+      saveProgress(); renderNav(); refreshProgressPanel();
+      const iconEl = document.getElementById('state-icon-' + qid);
+      if (iconEl && !iconEl.textContent) iconEl.textContent = '🟠';
+    }
+  } catch (e) {
+    title.textContent = '✗ SQL 执行错误';
+    meta.textContent = '';
+    body.innerHTML = `<div class="err-msg">${escapeHtml(e.message)}\n\n生成的 SQL:\n${escapeHtml(sql)}</div>`;
+    showFeedback(qid, 'fail', '❌ SQL 执行报错，请检查表达式。');
+  }
+}
+
+function checkBuilder(qid) {
+  const L = LESSONS.find(x => x.id === qid);
+  const st = qstate[qid];
+  if (!st.ast) { showFeedback(qid, 'fail', '❌ 表达式为空，无法提交。'); return; }
+  let userSQL, refSQL;
+  try { userSQL = astToSQL(st.ast); }
+  catch(e) { showFeedback(qid, 'fail', '❌ 你的表达式生成 SQL 失败：' + escapeHtml(e.message)); return; }
+  try { refSQL = astToSQL(L.answerAlgebra); }
+  catch(e) { showFeedback(qid, 'fail', '⚠️ 参考答案生成 SQL 失败：' + escapeHtml(e.message)); return; }
+
+  let userRes, refRes;
+  try { userRes = db.exec(userSQL); }
+  catch(e) { showFeedback(qid, 'fail', '❌ 你的 SQL 执行失败：' + escapeHtml(e.message) + '\n\n生成的 SQL：\n' + userSQL); return; }
+  try { refRes = db.exec(refSQL); }
+  catch(e) { showFeedback(qid, 'fail', '⚠️ 参考答案 SQL 执行失败：' + escapeHtml(e.message)); return; }
+
+  // 先展示结果
+  const box = document.getElementById('result-' + qid);
+  const body = document.getElementById('result-body-' + qid);
+  const title = document.getElementById('result-title-' + qid);
+  const meta = document.getElementById('result-meta-' + qid);
+  box.classList.add('show');
+  if (userRes.length) {
+    body.innerHTML = renderResultTable(userRes[0].columns, userRes[0].values);
+    title.textContent = '你的结果';
+    meta.textContent = `${userRes[0].values.length} 行`;
+  } else {
+    body.innerHTML = '<div style="padding:16px;color:#6e7781;text-align:center;font-size:13px">（无返回结果）</div>';
+    title.textContent = '你的结果';
+    meta.textContent = '0 行';
+  }
+
+  const cmp = compareResults(userRes, refRes);
+  if (cmp.pass) {
+    showFeedback(qid, 'pass', `✅ <b>通过！</b> ${cmp.msg}`);
+    progress[qid] = 'passed';
+    saveProgress(); renderNav(); refreshProgressPanel();
+    const iconEl = document.getElementById('state-icon-' + qid);
+    if (iconEl) iconEl.textContent = '✅';
+  } else {
+    showFeedback(qid, 'fail', `❌ <b>未通过。</b> ${cmp.msg}`);
+    if (progress[qid] !== 'passed') {
+      progress[qid] = 'attempted';
+      saveProgress(); renderNav(); refreshProgressPanel();
+      const iconEl = document.getElementById('state-icon-' + qid);
+      if (iconEl && iconEl.textContent !== '✅') iconEl.textContent = '🟠';
+    }
+  }
+}
+
+function renderResultTable(columns, values) {
+  let html = '<table class="result"><thead><tr>';
+  columns.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
+  html += '</tr></thead><tbody>';
+  values.forEach(row => {
+    html += '<tr>';
+    row.forEach(v => {
+      html += v === null ? '<td class="null">NULL</td>' : `<td>${escapeHtml(String(v))}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+// 集合语义比对：忽略列名、忽略行顺序，只看值集合
+function compareResults(userRes, refRes) {
+  const uRows = userRes.length ? userRes[0].values : [];
+  const rRows = refRes.length ? refRes[0].values : [];
+  const uCols = userRes.length ? userRes[0].columns.length : 0;
+  const rCols = refRes.length ? refRes[0].columns.length : 0;
+  if (uCols !== rCols) return { pass: false, msg: `列数不一致：你 ${uCols} 列，期望 ${rCols} 列。` };
+  // 去重集合比对
+  const rowKey = r => r.map(v => v === null ? '\0NULL\0' : String(v)).join('\0|\0');
+  const uSet = new Set(uRows.map(rowKey));
+  const rSet = new Set(rRows.map(rowKey));
+  if (uSet.size !== rSet.size) return { pass: false, msg: `去重后行数不一致：你 ${uSet.size}，期望 ${rSet.size}。` };
+  for (const k of rSet) if (!uSet.has(k)) return { pass: false, msg: `你的结果缺少一行（期望：${k.split('\0|\0').join(', ')}）。` };
+  for (const k of uSet) if (!rSet.has(k)) return { pass: false, msg: `你的结果多了一行（多出：${k.split('\0|\0').join(', ')}）。` };
+  return { pass: true, msg: `列数 ${uCols}，共 ${uSet.size} 行（去重集合语义）。` };
+}
+
+// ============ 反馈显示 ============
+function showFeedback(qid, cls, msg) {
+  const el = document.getElementById('feedback-' + qid);
+  if (!el) return;
+  el.className = 'feedback show ' + cls;
+  el.innerHTML = msg;
+}
+function hideFeedback(qid) {
+  const el = document.getElementById('feedback-' + qid);
+  if (el) el.className = 'feedback';
+}
+
+// ============ 进度 ============
+function saveProgress() { localStorage.setItem('sql-lab-algebra-progress-v1', JSON.stringify(progress)); }
+function saveViewedAnswers() { localStorage.setItem('sql-lab-algebra-viewed-v1', JSON.stringify([...viewedAnswers])); }
+
+function resetProgress() {
+  if (!confirm('确定清除所有进度？（数据库不受影响）')) return;
+  progress = {}; viewedAnswers = new Set();
+  saveProgress(); saveViewedAnswers();
+  renderNav(); refreshProgressPanel();
+  renderMain(currentGroup);
+}
+
+function clearAllProgress() {
+  if (!confirm('确定清空所有进度？\n包含"通过"、"尝试"和"看过答案"记录。\n（数据库不受影响）')) return;
+  progress = {}; viewedAnswers = new Set();
+  saveProgress(); saveViewedAnswers();
+  renderNav(); refreshProgressPanel(); renderMain(currentGroup);
+}
+
+// ============ 进度面板 ============
+function refreshProgressPanel() {
+  const total = LESSONS.length;
+  const passed = Object.values(progress).filter(v => v === 'passed').length;
+  const attempted = Object.keys(progress).filter(k => progress[k] === 'attempted').length;
+  const viewed = viewedAnswers.size;
+  const pct = total > 0 ? Math.round(passed / total * 100) : 0;
+
+  // 左侧 progress-bar
+  const pt = document.getElementById('progress-text');
+  const pf = document.getElementById('progress-bar-inner');
+  if (pt) pt.textContent = `进度 ${passed} / ${total}`;
+  if (pf) pf.style.width = pct + '%';
+
+  const el = id => document.getElementById(id);
+  if (!el('pp-total-passed')) return;
+  el('pp-total-passed').textContent = passed;
+  el('pp-total-total').textContent = total;
+  el('pp-bar-fill').style.width = pct + '%';
+  el('pp-pct').textContent = pct + '%';
+  el('pp-stat-passed').textContent = passed;
+  el('pp-stat-attempted').textContent = attempted;
+  el('pp-stat-viewed').textContent = viewed;
+
+  const groupsHtml = GROUPS.map(g => {
+    const gTotal = LESSONS.filter(L => L.group === g.key).length;
+    const gPassed = LESSONS.filter(L => L.group === g.key && progress[L.id] === 'passed').length;
+    const gPct = gTotal > 0 ? Math.round(gPassed / gTotal * 100) : 0;
+    return `<div class="pp-group-wrap">
+      <div class="pp-group">
+        <div class="pp-group-name"><span>${g.symbol}</span><span>${g.title}</span></div>
+        <div class="pp-group-val">${gPassed}/${gTotal}</div>
+      </div>
+      <div class="pp-mini-bar"><div class="pp-mini-bar-fill" style="width:${gPct}%"></div></div>
+    </div>`;
+  }).join('');
+  el('pp-groups').innerHTML = groupsHtml;
+}
+
+// ============ 提示 & 答案 ============
+function showNextHint(qid, total) {
+  const shownEl = document.getElementById('hint-shown-' + qid);
+  if (!shownEl) return;
+  let shown = parseInt(shownEl.textContent);
+  if (shown < total) {
+    const nextItem = document.getElementById(`hint-item-${qid}-${shown}`);
+    if (nextItem) nextItem.style.display = '';
+    shown++;
+    shownEl.textContent = shown;
+    if (shown >= total) {
+      const btn = document.getElementById('hint-more-' + qid);
+      if (btn) btn.style.display = 'none';
+    }
+  }
+}
+
+function revealAnswer(qid) {
+  const warn = document.getElementById('ans-warn-' + qid);
+  const detail = document.getElementById('ans-detail-' + qid);
+  if (warn) warn.style.display = 'none';
+  if (detail) detail.style.display = '';
+  viewedAnswers.add(qid);
+  saveViewedAnswers();
+  refreshProgressPanel();
+}
+
+// ============ 学号弹窗 + 学习报告导出 ============
+function exportReport() {
+  const modal = document.getElementById('student-id-modal');
+  const input = document.getElementById('student-id-input');
+  const cancelBtn = document.getElementById('student-id-cancel');
+  const confirmBtn = document.getElementById('student-id-confirm');
+  const savedId = localStorage.getItem('sql-lab-algebra-student-id') || localStorage.getItem('sqlplay_student_id') || '';
+  input.value = savedId;
+  modal.classList.remove('hidden');
+  setTimeout(() => input.focus(), 50);
+  const doExport = () => {
+    const studentId = input.value.trim();
+    if (!studentId) { input.focus(); return; }
+    localStorage.setItem('sql-lab-algebra-student-id', studentId);
+    modal.classList.add('hidden');
+    doExportWithId(studentId);
+  };
+  confirmBtn.onclick = doExport;
+  cancelBtn.onclick = () => modal.classList.add('hidden');
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') doExport();
+    if (e.key === 'Escape') modal.classList.add('hidden');
+  };
+}
+
+function doExportWithId(studentId) {
+  const total = LESSONS.length;
+  const passedIds = LESSONS.filter(L => progress[L.id] === 'passed').map(L => L.id);
+  const attemptedIds = LESSONS.filter(L => progress[L.id] === 'attempted').map(L => L.id);
+  const viewedIds = [...viewedAnswers];
+  const submitTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const ts = new Date().toISOString().slice(0, 10);
+  const rate = total > 0 ? (passedIds.length / total * 100).toFixed(1) : '0.0';
+  const pageLabel = '关系代数练习';
+
+  const groupRows = GROUPS.map(g => {
+    const gLessons = LESSONS.filter(L => L.group === g.key);
+    const gTotal = gLessons.length;
+    const gPassed = gLessons.filter(L => progress[L.id] === 'passed').length;
+    const gRate = gTotal > 0 ? Math.round(gPassed / gTotal * 100) : 0;
+    return '<tr><td>' + escapeHtml(g.symbol + ' ' + g.title) + '</td>'
+      + '<td class="num-cell">' + gTotal + '</td>'
+      + '<td class="num-cell">' + gPassed + '</td>'
+      + '<td><span class="rate-bar"><span class="rate-bar-fill" style="width:' + gRate + '%"></span></span><span class="rate-num">' + gRate + '%</span></td></tr>';
+  }).join('');
+
+  const badgesOf = (ids, cls) => ids.length
+    ? ids.map(id => '<span class="badge ' + cls + '">' + escapeHtml(id) + '</span>').join('')
+    : '<div class="empty">（无）</div>';
+
+  const html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<title>SQL练习场·关系代数学习报告 - ' + escapeHtml(studentId) + '</title>\n<style>\n'
+    + '* { box-sizing: border-box; }\n'
+    + 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; max-width: 960px; margin: 40px auto; padding: 0 24px; color: #24292f; background: #f6f8fa; line-height: 1.5; }\n'
+    + '.header-card { background: linear-gradient(135deg, #0969da, #218bff); color: #fff; padding: 24px 28px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(9,105,218,0.2); }\n'
+    + '.header-card h1 { margin: 0 0 14px; font-size: 22px; font-weight: 600; }\n'
+    + '.info-row { display: flex; flex-wrap: wrap; gap: 32px; font-size: 14px; }\n'
+    + '.info-item { display: flex; flex-direction: column; gap: 2px; }\n'
+    + '.info-label { opacity: 0.75; font-size: 11px; }\n'
+    + '.info-value { font-size: 15px; font-weight: 500; }\n'
+    + '.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }\n'
+    + '.stat-card { background: #fff; padding: 16px; border-radius: 8px; text-align: center; border: 1px solid #d0d7de; }\n'
+    + '.stat-card .num { font-size: 28px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }\n'
+    + '.stat-card .label { font-size: 12px; color: #57606a; margin-top: 4px; }\n'
+    + '.stat-card.rate .num { color: #0969da; }\n'
+    + '.stat-card.passed .num { color: #1a7f37; }\n'
+    + '.stat-card.attempted .num { color: #bf8700; }\n'
+    + '.stat-card.viewed .num { color: #6e7781; }\n'
+    + '.section-title { font-size: 16px; font-weight: 600; margin: 24px 0 12px; padding-left: 10px; border-left: 3px solid #0969da; color: #24292f; }\n'
+    + '.section-title .count { font-weight: normal; color: #57606a; font-size: 14px; margin-left: 4px; }\n'
+    + 'table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }\n'
+    + 'thead { background: #f6f8fa; }\n'
+    + 'th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #d0d7de; font-size: 14px; }\n'
+    + 'tbody tr:last-child td { border-bottom: none; }\n'
+    + 'th { color: #57606a; font-weight: 600; }\n'
+    + 'td.num-cell { text-align: right; font-variant-numeric: tabular-nums; }\n'
+    + '.rate-bar { display: inline-block; width: 110px; height: 8px; background: #eaeef2; border-radius: 4px; vertical-align: middle; overflow: hidden; }\n'
+    + '.rate-bar-fill { display: block; height: 100%; background: #1a7f37; }\n'
+    + '.rate-num { display: inline-block; margin-left: 8px; font-variant-numeric: tabular-nums; color: #24292f; font-size: 13px; }\n'
+    + '.badges { display: flex; flex-wrap: wrap; gap: 6px; background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #d0d7de; }\n'
+    + '.badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-family: "SF Mono", Consolas, "Courier New", monospace; }\n'
+    + '.badge.passed { background: #dafbe1; color: #1a7f37; border: 1px solid #b5f0c1; }\n'
+    + '.badge.attempted { background: #fff8c5; color: #7d4e00; border: 1px solid #f0e68a; }\n'
+    + '.badge.viewed { background: #f6f8fa; color: #6e7781; border: 1px solid #d0d7de; }\n'
+    + '.empty { color: #8b949e; font-size: 13px; padding: 4px 0; }\n'
+    + '.footer { margin-top: 40px; text-align: center; color: #8b949e; font-size: 12px; padding: 16px; }\n'
+    + '@media print { body { background: #fff; margin: 20px auto; } .header-card, .stat-card, table, .badges { box-shadow: none; } }\n'
+    + '</style>\n</head>\n<body>\n'
+    + '<div class="header-card">\n'
+    + '  <h1>SQL 练习场 · 关系代数学习报告</h1>\n'
+    + '  <div class="info-row">\n'
+    + '    <div class="info-item"><span class="info-label">学号</span><span class="info-value">' + escapeHtml(studentId) + '</span></div>\n'
+    + '    <div class="info-item"><span class="info-label">提交时间</span><span class="info-value">' + escapeHtml(submitTime) + '</span></div>\n'
+    + '    <div class="info-item"><span class="info-label">练习模块</span><span class="info-value">' + escapeHtml(pageLabel) + '</span></div>\n'
+    + '  </div>\n'
+    + '</div>\n'
+    + '<div class="stats-row">\n'
+    + '  <div class="stat-card rate"><div class="num">' + rate + '%</div><div class="label">完成率</div></div>\n'
+    + '  <div class="stat-card passed"><div class="num">' + passedIds.length + '</div><div class="label">已通过</div></div>\n'
+    + '  <div class="stat-card attempted"><div class="num">' + attemptedIds.length + '</div><div class="label">尝试未通过</div></div>\n'
+    + '  <div class="stat-card viewed"><div class="num">' + viewedIds.length + '</div><div class="label">看过答案</div></div>\n'
+    + '</div>\n'
+    + '<div class="section-title">分组明细</div>\n'
+    + '<table><thead><tr><th>分组（8 类基本运算）</th><th>总数</th><th>通过数</th><th>通过率</th></tr></thead><tbody>' + groupRows + '</tbody></table>\n'
+    + '<div class="section-title">已通过题目<span class="count">（' + passedIds.length + '）</span></div>\n'
+    + '<div class="badges">' + badgesOf(passedIds, 'passed') + '</div>\n'
+    + '<div class="section-title">尝试未通过题目<span class="count">（' + attemptedIds.length + '）</span></div>\n'
+    + '<div class="badges">' + badgesOf(attemptedIds, 'attempted') + '</div>\n'
+    + '<div class="section-title">看过答案的题目<span class="count">（' + viewedIds.length + '）</span></div>\n'
+    + '<div class="badges">' + badgesOf(viewedIds, 'viewed') + '</div>\n'
+    + '<div class="footer">SQL 练习场 · 关系代数练习 · 学号 ' + escapeHtml(studentId) + ' · ' + escapeHtml(submitTime) + ' · 总题数 ' + total + '</div>\n'
+    + '</body>\n</html>';
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `SQL练习场_关系代数学习报告_${studentId}_${ts}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ============ 工具 ============
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+init();
+</script>
+</body>
+</html>
